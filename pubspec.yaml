@@ -3,7 +3,7 @@ description: تطبيق مراقب الفضة - تطبيق فاخر لأسعار
 
 publish_to: 'none'
 
-version: 5.0.10+10
+version: 5.0.11+11
 
 environment:
   sdk: '>=2.18.0 <3.0.0'
@@ -42,4 +42,5 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/images/icon.png"
+  image_path_ios: "assets/images/icon_ios.png"
   remove_alpha_ios: true
