@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -121,22 +122,25 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildBody(GoldProvider provider) {
-    final bool showUpdateBanner = _currentIndex <= 3;
+    final bool hideOurAppsScreen = _shouldHideOurAppsScreen();
+    final int effectiveIndex =
+        hideOurAppsScreen && _currentIndex == 4 ? 0 : _currentIndex;
+    final bool showUpdateBanner = effectiveIndex <= 3;
 
     final bool showFullShimmer = provider.isLoading &&
-        _currentIndex == 0 &&
+        effectiveIndex == 0 &&
         provider.currentGoldPrice == null;
 
     final Widget content = showFullShimmer
         ? _buildShimmerLoading()
         : IndexedStack(
-            index: _currentIndex,
+            index: effectiveIndex,
             children: [
               _buildHomeContent(provider),
               CalculatorScreen(),
               CaliberScreen(),
               BullionScreen(),
-              OurAppsScreen(),
+              hideOurAppsScreen ? const SizedBox.shrink() : OurAppsScreen(),
               AboutScreen(),
               ContactScreen(),
             ],
@@ -697,9 +701,20 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   void _onTabTapped(int index) {
+    if (_shouldHideOurAppsScreen() && index == 4) {
+      setState(() {
+        _currentIndex = 0;
+      });
+      return;
+    }
+
     setState(() {
       _currentIndex = index;
     });
+  }
+
+  bool _shouldHideOurAppsScreen() {
+    return defaultTargetPlatform == TargetPlatform.iOS;
   }
 
   Future<void> _openAlmurakibWebsiteFromLogo() async {

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 import '../utils/responsive.dart';
@@ -58,6 +59,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
   @override
   Widget build(BuildContext context) {
     final bool isMobile = Responsive.isMobile(context);
+    final bool hideOurAppsTab = _shouldHideOurAppsTab();
     final int displayIndex = _mapScreenIndexToBarIndex(widget.currentIndex);
 
     return Container(
@@ -90,7 +92,8 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
         child: BottomNavigationBar(
           currentIndex: displayIndex,
           onTap: (barIndex) {
-            if (barIndex <= 4) {
+            final int maxDirectTabIndex = hideOurAppsTab ? 3 : 4;
+            if (barIndex <= maxDirectTabIndex) {
               widget.onTap(barIndex);
               return;
             }
@@ -136,12 +139,13 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
               label: _bullionsLabel,
               isSelected: widget.currentIndex == 3,
             ),
-            _buildNavItem(
-              outlineIcon: Icons.apps_outlined,
-              filledIcon: Icons.apps,
-              label: _ourAppsLabel,
-              isSelected: widget.currentIndex == 4,
-            ),
+            if (!hideOurAppsTab)
+              _buildNavItem(
+                outlineIcon: Icons.apps_outlined,
+                filledIcon: Icons.apps,
+                label: _ourAppsLabel,
+                isSelected: widget.currentIndex == 4,
+              ),
             _buildNavItem(
               outlineIcon: Icons.info_outline,
               filledIcon: Icons.info,
@@ -155,8 +159,17 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
   }
 
   int _mapScreenIndexToBarIndex(int screenIndex) {
+    if (_shouldHideOurAppsTab()) {
+      if (screenIndex <= 3) return screenIndex;
+      return 4;
+    }
+
     if (screenIndex <= 4) return screenIndex;
     return 5;
+  }
+
+  bool _shouldHideOurAppsTab() {
+    return defaultTargetPlatform == TargetPlatform.iOS;
   }
 
   BottomNavigationBarItem _buildNavItem({
