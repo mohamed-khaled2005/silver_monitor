@@ -3,7 +3,7 @@ description: تطبيق مراقب الفضة - تطبيق فاخر لأسعار
 
 publish_to: 'none'
 
-version: 5.0.13+13
+version: 5.0.14+14
 
 environment:
   sdk: '>=2.18.0 <3.0.0'
