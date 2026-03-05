@@ -17,10 +17,10 @@ dependencies:
   http: ^0.13.6
   shared_preferences: ^2.0.15
   url_launcher: ^6.3.2
-  firebase_core: ^2.27.1
-  firebase_messaging: ^14.7.10
+  firebase_core: ^4.4.0
+  firebase_messaging: ^16.0.2
   flutter_local_notifications: ^17.2.4
-  firebase_analytics: ^10.10.7
+  firebase_analytics: ^12.1.1
   google_sign_in: ^6.2.1
   sign_in_with_apple: ^7.0.1
 
