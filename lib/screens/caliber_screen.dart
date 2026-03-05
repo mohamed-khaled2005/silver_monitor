@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../animations/fade_animation.dart';
 import '../providers/gold_provider.dart';
 import '../utils/constants.dart';
 import '../utils/responsive.dart';
-import '../animations/fade_animation.dart';
 import '../widgets/app_section_header.dart';
 
 class CaliberScreen extends StatefulWidget {
+  const CaliberScreen({super.key});
+
   @override
-  _CaliberScreenState createState() => _CaliberScreenState();
+  State<CaliberScreen> createState() => _CaliberScreenState();
 }
 
 class _CaliberScreenState extends State<CaliberScreen> {
   bool _showOunce = false; // false = لكل جرام، true = لكل أونصة
 
-  // 🎨 ألوان فضة خاصة بالصفحة دي فقط
   static const Color _silverAccent = Color(0xFFC0C5D5);
   static const Color _silverAccentDark = Color(0xFF9FA6B5);
   static const LinearGradient _silverGradient = LinearGradient(
@@ -37,10 +39,10 @@ class _CaliberScreenState extends State<CaliberScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 6),
-            const AppSectionHeader(title: 'العيارات'),
-            const SizedBox(height: 16),
+            const AppSectionHeader(title: 'أسعار العيارات'),
+            const SizedBox(height: 12),
             _buildUnitToggle(),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _buildCaliberList(provider),
           ],
         ),
@@ -50,10 +52,10 @@ class _CaliberScreenState extends State<CaliberScreen> {
 
   Widget _buildUnitToggle() {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
@@ -61,10 +63,10 @@ class _CaliberScreenState extends State<CaliberScreen> {
             child: GestureDetector(
               onTap: () => setState(() => _showOunce = false),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(vertical: 9),
                 decoration: BoxDecoration(
                   color: _showOunce ? Colors.transparent : _silverAccent,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Text(
@@ -80,15 +82,15 @@ class _CaliberScreenState extends State<CaliberScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _showOunce = true),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(vertical: 9),
                 decoration: BoxDecoration(
                   color: _showOunce ? _silverAccent : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Text(
@@ -121,8 +123,8 @@ class _CaliberScreenState extends State<CaliberScreen> {
         final bool isMainCard = index == 0;
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(20),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             gradient: isMainCard
                 ? _silverGradient
@@ -132,37 +134,37 @@ class _CaliberScreenState extends State<CaliberScreen> {
                       AppColors.cardLight,
                     ],
                   ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.25),
-                blurRadius: 10,
-                spreadRadius: 2,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 8,
+                spreadRadius: 1,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
           child: Row(
             children: [
               _buildCaliberIcon(index),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 👇 تصغير حجم خط اسم العيار
                     Text(
                       caliber.name,
-                      style: AppTextStyles.headingSmall.copyWith(
-                        fontSize: 15,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
                         color:
                             isMainCard ? Colors.black : AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       'نقاء ${caliber.purity}',
-                      style: AppTextStyles.bodyMedium.copyWith(
+                      style: AppTextStyles.bodySmall.copyWith(
                         color: isMainCard
                             ? Colors.black54
                             : AppColors.textSecondary,
@@ -174,11 +176,10 @@ class _CaliberScreenState extends State<CaliberScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // 👇 تصغير حجم خط السعر
                   Text(
                     pricePerUnit.toStringAsFixed(2),
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: isMainCard ? Colors.black : _silverAccent,
                       fontFamily: 'Tajawal',
@@ -188,7 +189,7 @@ class _CaliberScreenState extends State<CaliberScreen> {
                     _showOunce
                         ? '${provider.selectedCurrency} / أونصة'
                         : '${provider.selectedCurrency} / جرام',
-                    style: AppTextStyles.bodyMedium.copyWith(
+                    style: AppTextStyles.bodySmall.copyWith(
                       color:
                           isMainCard ? Colors.black54 : AppColors.textSecondary,
                     ),
@@ -213,26 +214,24 @@ class _CaliberScreenState extends State<CaliberScreen> {
       Icons.military_tech,
     ];
 
-    // لو عدد العيارات أكبر من الليست، نلف على الأيقونات
     final iconData = icons[index % icons.length];
-
     final bool isMain = index == 0;
 
     return Container(
-      width: 50,
-      height: 50,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
-        color: isMain ? Colors.white : _silverAccent.withOpacity(0.12),
+        color: isMain ? Colors.white : _silverAccent.withValues(alpha: 0.12),
         shape: BoxShape.circle,
         border: Border.all(
           color: isMain ? Colors.transparent : _silverAccentDark,
-          width: 2,
+          width: 1.5,
         ),
       ),
       child: Icon(
         iconData,
         color: _silverAccentDark,
-        size: 24,
+        size: 20,
       ),
     );
   }

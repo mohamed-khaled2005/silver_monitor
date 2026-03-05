@@ -21,7 +21,8 @@ class GoldPriceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color changeColor = isPositive ? Colors.greenAccent : Colors.redAccent;
+    final Color changeColor =
+        isPositive ? Colors.greenAccent : Colors.redAccent;
 
     return Container(
       padding: const EdgeInsets.all(20),

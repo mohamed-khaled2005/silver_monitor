@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'constants.dart';
+
 class FirstTimeHint {
   static Future<bool> _seen(String key) async {
     final prefs = await SharedPreferences.getInstance();
@@ -49,7 +51,6 @@ class FirstTimeHint {
     if (box == null || !box.hasSize) return;
 
     final overlay = Overlay.of(context, rootOverlay: true);
-    if (overlay == null) return;
 
     final pos = box.localToGlobal(Offset.zero);
     final size = box.size;
@@ -83,7 +84,7 @@ class FirstTimeHint {
     overlay.insert(entry);
 
     Future.delayed(autoDismiss, () {
-      if (context.mounted) dismiss();
+      dismiss();
     });
   }
 }
@@ -111,13 +112,13 @@ class _SpotlightHintOverlay extends StatefulWidget {
 
 class _SpotlightHintOverlayState extends State<_SpotlightHintOverlay>
     with TickerProviderStateMixin {
-  late final AnimationController _pulse =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
-        ..repeat();
+  late final AnimationController _pulse = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1200))
+    ..repeat();
 
-  late final AnimationController _appear =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 320))
-        ..forward();
+  late final AnimationController _appear = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 320))
+    ..forward();
 
   @override
   void dispose() {
@@ -139,7 +140,7 @@ class _SpotlightHintOverlayState extends State<_SpotlightHintOverlay>
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    const hintAccent = Color(0xFFC0C5D5);
 
     return Material(
       color: Colors.transparent,
@@ -154,13 +155,14 @@ class _SpotlightHintOverlayState extends State<_SpotlightHintOverlay>
           final placeAbove = aboveY > 24;
 
           final bubbleTop = placeAbove ? aboveY : (hole.bottom + 14);
-          final bubbleLeft =
-              (hole.center.dx - bubbleW / 2).clamp(12.0, c.maxWidth - bubbleW - 12);
+          final bubbleLeft = (hole.center.dx - bubbleW / 2)
+              .clamp(12.0, c.maxWidth - bubbleW - 12);
 
           final arrowUp = !placeAbove;
 
           final fade = CurvedAnimation(parent: _appear, curve: Curves.easeOut);
-          final scale = CurvedAnimation(parent: _appear, curve: Curves.easeOutBack);
+          final scale =
+              CurvedAnimation(parent: _appear, curve: Curves.easeOutBack);
 
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -175,8 +177,9 @@ class _SpotlightHintOverlayState extends State<_SpotlightHintOverlay>
                         painter: _SpotlightPainter(
                           target: hole,
                           t: _pulse.value,
-                          overlayColor: Colors.black.withOpacity(widget.overlayOpacity),
-                          primary: cs.primary,
+                          overlayColor:
+                              Colors.black.withValues(alpha: widget.overlayOpacity),
+                          primary: hintAccent,
                           radius: widget.holeRadius,
                         ),
                       );
@@ -252,7 +255,7 @@ class _SpotlightPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3
-        ..color = Colors.white.withOpacity(alpha),
+        ..color = Colors.white.withValues(alpha: alpha),
     );
 
     // Inner focus ring
@@ -261,7 +264,7 @@ class _SpotlightPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
-        ..color = primary.withOpacity(0.95),
+        ..color = primary.withValues(alpha: 0.95),
     );
   }
 
@@ -288,7 +291,7 @@ class _HintBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    const hintAccent = Color(0xFFC0C5D5);
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -298,17 +301,17 @@ class _HintBubble extends StatelessWidget {
           if (arrowUp)
             CustomPaint(
               size: const Size(18, 9),
-              painter: _ArrowPainter(color: Colors.white, up: true),
+              painter: _ArrowPainter(color: AppColors.cardDark, up: true),
             ),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.cardDark,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.black.withOpacity(0.06)),
+              border: Border.all(color: hintAccent.withValues(alpha: 0.26)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.18),
+                  color: Colors.black.withValues(alpha: 0.36),
                   blurRadius: 16,
                   offset: const Offset(0, 10),
                 ),
@@ -320,11 +323,17 @@ class _HintBubble extends StatelessWidget {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.10),
+                    color: AppColors.cardLight.withValues(alpha: 0.96),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: hintAccent.withValues(alpha: 0.28),
+                    ),
                   ),
                   alignment: Alignment.center,
-                  child: Icon(Icons.info_outline_rounded, color: cs.primary),
+                  child: const Icon(
+                    Icons.info_outline_rounded,
+                    color: hintAccent,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -334,15 +343,19 @@ class _HintBubble extends StatelessWidget {
                       fontFamily: 'Tajawal',
                       fontWeight: FontWeight.w800,
                       fontSize: 13,
-                      color: Colors.black87,
+                      color: AppColors.textPrimary,
                       height: 1.25,
                     ),
                   ),
                 ),
                 IconButton(
                   onPressed: onClose,
-                  icon: Icon(Icons.close_rounded, color: cs.primary),
-                  constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: AppColors.textSecondary,
+                  ),
+                  constraints:
+                      const BoxConstraints.tightFor(width: 34, height: 34),
                   padding: EdgeInsets.zero,
                 ),
               ],
@@ -351,7 +364,7 @@ class _HintBubble extends StatelessWidget {
           if (!arrowUp)
             CustomPaint(
               size: const Size(18, 9),
-              painter: _ArrowPainter(color: Colors.white, up: false),
+              painter: _ArrowPainter(color: AppColors.cardDark, up: false),
             ),
         ],
       ),

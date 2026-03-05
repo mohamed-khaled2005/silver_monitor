@@ -32,6 +32,13 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
   static const String _whoWeAreLabel = '\u0645\u0646 \u0646\u062d\u0646';
   static const String _contactUsLabel =
       '\u0627\u0644\u0627\u062a\u0635\u0627\u0644 \u0628\u0646\u0627';
+  static const String _accountLabel = '\u062d\u0633\u0627\u0628\u064a';
+  static const String _educationLabel =
+      '\u0627\u0644\u0645\u062d\u062a\u0648\u0649 \u0627\u0644\u062a\u0639\u0644\u064a\u0645\u064a';
+  static const String _zakatLabel =
+      '\u062d\u0627\u0633\u0628\u0629 \u0627\u0644\u0632\u0643\u0627\u0629';
+  static const String _profitLossLabel =
+      '\u0627\u0644\u0631\u0628\u062d/\u0627\u0644\u062e\u0633\u0627\u0631\u0629';
   static const Color _silverAccent = Color(0xFFC0C5D5);
 
   BoxDecoration _sheetDecoration() {
@@ -58,12 +65,19 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
     final bool isMobile = Responsive.isMobile(context);
+    final bool isCompactNav = isMobile && mediaQuery.size.width < 390;
     final bool hideOurAppsTab = _shouldHideOurAppsTab();
     final int displayIndex = _mapScreenIndexToBarIndex(widget.currentIndex);
+    final double rawScale = mediaQuery.textScaler.scale(1.0);
+    final double boundedScale = isCompactNav
+        ? 1.0
+        : (rawScale.isFinite ? rawScale.clamp(1.0, 1.08).toDouble() : 1.0);
+    final TextScaler navTextScaler = TextScaler.linear(boundedScale);
 
     return Container(
-      margin: EdgeInsets.all(isMobile ? 12 : 20),
+      margin: EdgeInsets.all(isCompactNav ? 8 : (isMobile ? 12 : 20)),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
@@ -89,70 +103,80 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppDimensions.borderRadiusLarge),
-        child: BottomNavigationBar(
-          currentIndex: displayIndex,
-          onTap: (barIndex) {
-            final int maxDirectTabIndex = hideOurAppsTab ? 3 : 4;
-            if (barIndex <= maxDirectTabIndex) {
-              widget.onTap(barIndex);
-              return;
-            }
-            _openAboutMenu(context);
-          },
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: _silverAccent,
-          unselectedItemColor: AppColors.textSecondary.withValues(alpha: 0.8),
-          selectedFontSize: 12,
-          unselectedFontSize: 11,
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Tajawal',
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontFamily: 'Tajawal',
-          ),
-          showUnselectedLabels: true,
-          items: [
-            _buildNavItem(
-              outlineIcon: Icons.home_outlined,
-              filledIcon: Icons.home,
-              label: _homeLabel,
-              isSelected: widget.currentIndex == 0,
+        child: MediaQuery(
+          data: mediaQuery.copyWith(textScaler: navTextScaler),
+          child: BottomNavigationBar(
+            currentIndex: displayIndex,
+            onTap: (barIndex) {
+              final int maxDirectTabIndex = hideOurAppsTab ? 3 : 4;
+              if (barIndex <= maxDirectTabIndex) {
+                widget.onTap(barIndex);
+                return;
+              }
+              _openAboutMenu(context);
+            },
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: _silverAccent,
+            unselectedItemColor: AppColors.textSecondary.withValues(alpha: 0.8),
+            selectedFontSize: isCompactNav ? 10 : 12,
+            unselectedFontSize: isCompactNav ? 9 : 11,
+            selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Tajawal',
             ),
-            _buildNavItem(
-              outlineIcon: Icons.calculate_outlined,
-              filledIcon: Icons.calculate,
-              label: _calculatorLabel,
-              isSelected: widget.currentIndex == 1,
+            unselectedLabelStyle: const TextStyle(
+              fontFamily: 'Tajawal',
             ),
-            _buildNavItem(
-              outlineIcon: Icons.diamond_outlined,
-              filledIcon: Icons.diamond,
-              label: _calibersLabel,
-              isSelected: widget.currentIndex == 2,
-            ),
-            _buildNavItem(
-              outlineIcon: Icons.auto_awesome_outlined,
-              filledIcon: Icons.auto_awesome,
-              label: _bullionsLabel,
-              isSelected: widget.currentIndex == 3,
-            ),
-            if (!hideOurAppsTab)
+            showSelectedLabels: true,
+            showUnselectedLabels: !isCompactNav,
+            items: [
               _buildNavItem(
-                outlineIcon: Icons.apps_outlined,
-                filledIcon: Icons.apps,
-                label: _ourAppsLabel,
-                isSelected: widget.currentIndex == 4,
+                outlineIcon: Icons.home_outlined,
+                filledIcon: Icons.home,
+                label: _homeLabel,
+                isSelected: widget.currentIndex == 0,
+                isCompact: isCompactNav,
               ),
-            _buildNavItem(
-              outlineIcon: Icons.info_outline,
-              filledIcon: Icons.info,
-              label: _aboutLabel,
-              isSelected: widget.currentIndex == 5 || widget.currentIndex == 6,
-            ),
-          ],
+              _buildNavItem(
+                outlineIcon: Icons.calculate_outlined,
+                filledIcon: Icons.calculate,
+                label: _calculatorLabel,
+                isSelected: widget.currentIndex == 1,
+                isCompact: isCompactNav,
+              ),
+              _buildNavItem(
+                outlineIcon: Icons.diamond_outlined,
+                filledIcon: Icons.diamond,
+                label: _calibersLabel,
+                isSelected: widget.currentIndex == 2,
+                isCompact: isCompactNav,
+              ),
+              _buildNavItem(
+                outlineIcon: Icons.auto_awesome_outlined,
+                filledIcon: Icons.auto_awesome,
+                label: _bullionsLabel,
+                isSelected: widget.currentIndex == 3,
+                isCompact: isCompactNav,
+              ),
+              if (!hideOurAppsTab)
+                _buildNavItem(
+                  outlineIcon: Icons.apps_outlined,
+                  filledIcon: Icons.apps,
+                  label: _ourAppsLabel,
+                  isSelected: widget.currentIndex == 4,
+                  isCompact: isCompactNav,
+                ),
+              _buildNavItem(
+                outlineIcon: Icons.info_outline,
+                filledIcon: Icons.info,
+                label: _aboutLabel,
+                isSelected: widget.currentIndex >= 5,
+                isCompact: isCompactNav,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -177,11 +201,15 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
     required IconData filledIcon,
     required String label,
     required bool isSelected,
+    required bool isCompact,
   }) {
     return BottomNavigationBarItem(
       icon: AnimatedContainer(
         duration: AppAnimations.buttonAnimation,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: EdgeInsets.symmetric(
+          horizontal: isCompact ? 6 : 10,
+          vertical: isCompact ? 3 : 4,
+        ),
         decoration: BoxDecoration(
           color: isSelected
               ? Colors.white.withValues(alpha: 0.06)
@@ -193,7 +221,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
           child: Icon(
             isSelected ? filledIcon : outlineIcon,
             key: ValueKey('${label}_${isSelected ? 'filled' : 'outline'}'),
-            size: 22,
+            size: isCompact ? 20 : 22,
           ),
         ),
       ),
@@ -202,54 +230,122 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
   }
 
   void _openAboutMenu(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       elevation: 0,
       builder: (ctx) {
+        final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
         return SafeArea(
           child: Directionality(
             textDirection: TextDirection.rtl,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-              child: Container(
-                decoration: _sheetDecoration(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 12),
-                    Container(
-                      width: 62,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: AppColors.textSecondary.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
+              padding: EdgeInsets.fromLTRB(14, 0, 14, 14 + bottomInset),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: mediaQuery.size.height * 0.82,
+                ),
+                child: Container(
+                  decoration: _sheetDecoration(),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 12),
+                        Container(
+                          width: 62,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color:
+                                AppColors.textSecondary.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _menuTile(
+                          title: _whoWeAreLabel,
+                          icon: Icons.info_outline_rounded,
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            widget.onTap(5);
+                          },
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color:
+                              AppColors.textSecondary.withValues(alpha: 0.16),
+                        ),
+                        _menuTile(
+                          title: _contactUsLabel,
+                          icon: Icons.contact_page_outlined,
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            widget.onTap(6);
+                          },
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color:
+                              AppColors.textSecondary.withValues(alpha: 0.16),
+                        ),
+                        _menuTile(
+                          title: _accountLabel,
+                          icon: Icons.person_outline_rounded,
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            widget.onTap(7);
+                          },
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color:
+                              AppColors.textSecondary.withValues(alpha: 0.16),
+                        ),
+                        _menuTile(
+                          title: _educationLabel,
+                          icon: Icons.menu_book_outlined,
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            widget.onTap(8);
+                          },
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color:
+                              AppColors.textSecondary.withValues(alpha: 0.16),
+                        ),
+                        _menuTile(
+                          title: _zakatLabel,
+                          icon: Icons.calculate_outlined,
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            widget.onTap(9);
+                          },
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color:
+                              AppColors.textSecondary.withValues(alpha: 0.16),
+                        ),
+                        _menuTile(
+                          title: _profitLossLabel,
+                          icon: Icons.trending_up_rounded,
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            widget.onTap(10);
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                     ),
-                    const SizedBox(height: 14),
-                    _menuTile(
-                      title: _whoWeAreLabel,
-                      icon: Icons.info_outline_rounded,
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        widget.onTap(5);
-                      },
-                    ),
-                    Divider(
-                      height: 1,
-                      thickness: 1,
-                      color: AppColors.textSecondary.withValues(alpha: 0.16),
-                    ),
-                    _menuTile(
-                      title: _contactUsLabel,
-                      icon: Icons.contact_page_outlined,
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        widget.onTap(6);
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                  ],
+                  ),
                 ),
               ),
             ),

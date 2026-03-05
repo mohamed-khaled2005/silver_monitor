@@ -8,24 +8,48 @@ import '../providers/gold_provider.dart';
 import '../utils/constants.dart';
 import '../utils/responsive.dart';
 import '../widgets/gold_price_card.dart';
-import '../widgets/price_chart.dart';
-import '../widgets/custom_bottom_nav_bar.dart';
 import '../widgets/shimmer_loading.dart';
 import '../widgets/top_last_update_banner.dart';
 import '../models/currency_model.dart';
+import '../models/manual_ad_model.dart';
 import 'calculator_screen.dart';
+import 'zakat_calculator_screen.dart';
 import 'caliber_screen.dart';
 import 'bullion_screen.dart';
 import 'our_apps_screen.dart';
 import 'about_screen.dart';
 import 'contact_screen.dart';
+import 'account_screen.dart';
+import 'educational_content_screen.dart';
+import 'profit_loss_screen.dart';
+import 'analysis_performance_screen.dart';
+import '../providers/app_manager_provider.dart';
+import '../widgets/manual_ad_banner.dart';
 
-// ✅ ADD
+// âœ… ADD
 import '../utils/first_time_hint.dart';
 import '../utils/app_lifecycle_refresh.dart';
 
-/// 🎨 لون فضي للاستخدام في هذه الصفحة بدلاً من الذهبي
+/// ًںژ¨ ظ„ظˆظ† ظپط¶ظٹ ظ„ظ„ط§ط³طھط®ط¯ط§ظ… ظپظٹ ظ‡ط°ظ‡ ط§ظ„طµظپط­ط© ط¨ط¯ظ„ط§ظ‹ ظ…ظ† ط§ظ„ط°ظ‡ط¨ظٹ
 const Color _silverAccent = Color(0xFFC0C5D5);
+const Color _headerSurfaceTop = Color(0xFF13171D);
+const Color _headerSurfaceBottom = Color(0xFF0D1015);
+const double _headerRowHeight = 38;
+const double _headerVerticalPadding = 8;
+const double _headerTopPadding = 8;
+const double _headerBottomPadding = 11;
+
+class _SideNavItem {
+  final int index;
+  final String title;
+  final IconData icon;
+
+  const _SideNavItem({
+    required this.index,
+    required this.title,
+    required this.icon,
+  });
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -36,12 +60,27 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
-  int _currentIndex = 0;
+  static const int _homeTabIndex = 0;
+  static const int _calculatorTabIndex = 1;
+  static const int _zakatTabIndex = 2;
+  static const int _calibersTabIndex = 3;
+  static const int _bullionsTabIndex = 4;
+  static const int _profitLossTabIndex = 5;
+  static const int _educationTabIndex = 6;
+  static const int _ourAppsTabIndex = 7;
+  static const int _aboutTabIndex = 8;
+  static const int _contactTabIndex = 9;
+  static const int _accountTabIndex = 10;
+  static const int _analysisTabIndex = 11;
+  static const double _desktopNavBreakpoint = 980;
 
-  // ✅ ده اللي بيربط تحديث الشارت بزر التحديث / تغيير العملة
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  int _currentIndex = _homeTabIndex;
+
+  // âœ… ط¯ظ‡ ط§ظ„ظ„ظٹ ط¨ظٹط±ط¨ط· طھط­ط¯ظٹط« ط§ظ„ط´ط§ط±طھ ط¨ط²ط± ط§ظ„طھط­ط¯ظٹط« / طھط؛ظٹظٹط± ط§ظ„ط¹ظ…ظ„ط©
   int _chartRefreshTick = 0;
 
-  // ✅ Key لزر الريفريش عشان الـ spotlight
+  // âœ… Key ظ„ط²ط± ط§ظ„ط±ظٹظپط±ظٹط´ ط¹ط´ط§ظ† ط§ظ„ظ€ spotlight
   final GlobalKey _refreshHintKey = GlobalKey();
 
   late AnimationController _animationController;
@@ -56,7 +95,7 @@ class HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
 
-    // ✅ اسمع signal بتاع resume-refresh
+    // âœ… ط§ط³ظ…ط¹ signal ط¨طھط§ط¹ resume-refresh
     AppLifecycleSignals.resumeTick.addListener(_onResumeSignal);
 
     _animationController = AnimationController(
@@ -68,6 +107,8 @@ class HomeScreenState extends State<HomeScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<GoldProvider>(context, listen: false);
+      final appManager =
+          Provider.of<AppManagerProvider>(context, listen: false);
 
       final empty = provider.currentGoldPrice == null &&
           provider.calibers.isEmpty &&
@@ -77,14 +118,24 @@ class HomeScreenState extends State<HomeScreen>
         provider.initializeData();
       }
 
+      final remoteCurrency = appManager.preferences.selectedCurrency;
+      if (remoteCurrency != null &&
+          remoteCurrency.isNotEmpty &&
+          remoteCurrency != provider.selectedCurrency) {
+        provider.setCurrency(remoteCurrency);
+      }
+
+      appManager.refreshAd();
+      appManager.refreshEducationalContent();
+
       _animationController.forward();
 
-      // ✅ Hint مرة واحدة فقط على زر التحديث
+      // âœ… Hint ظ…ط±ط© ظˆط§ط­ط¯ط© ظپظ‚ط· ط¹ظ„ظ‰ ط²ط± ط§ظ„طھط­ط¯ظٹط«
       FirstTimeHint.showSpotlightHint(
         context: context,
         targetKey: _refreshHintKey,
         prefsKey: 'hint_silver_refresh_button_v1',
-        message: 'اضغط هنا لتحديث أسعار الفضة (مرة واحدة فقط)',
+        message: 'اضغط هنا لتحديث أسعار الفضة',
         overlayOpacity: 0.35,
         holePadding: 10,
         holeRadius: 16,
@@ -106,17 +157,42 @@ class HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<GoldProvider>(context);
+    final bool isDesktopNav = _isDesktopNav(context);
+    final bool isAuthenticated = context.select<AppManagerProvider, bool>(
+      (manager) => manager.isAuthenticated,
+    );
+    final ManualAdModel? activeAd =
+        context.select<AppManagerProvider, ManualAdModel?>(
+      (manager) => manager.activeAd,
+    );
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: AppColors.background,
-      appBar: _buildAppBar(context, provider),
+      appBar: _buildAppBar(
+        context,
+        isDesktopNav: isDesktopNav,
+        isAuthenticated: isAuthenticated,
+      ),
+      drawer: isDesktopNav ? null : _buildSideDrawer(context),
+      bottomNavigationBar: ManualAdBanner(
+        stickyBottom: true,
+        ad: activeAd,
+      ),
       body: FadeTransition(
         opacity: _fadeAnimation,
-        child: _buildBody(provider),
-      ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
+        child: isDesktopNav
+            ? Row(
+                textDirection: TextDirection.rtl,
+                children: [
+                  SizedBox(
+                    width: 290,
+                    child: _buildSideNavigationPanel(closeOnSelect: false),
+                  ),
+                  Expanded(child: _buildBody(provider)),
+                ],
+              )
+            : _buildBody(provider),
       ),
     );
   }
@@ -124,11 +200,14 @@ class HomeScreenState extends State<HomeScreen>
   Widget _buildBody(GoldProvider provider) {
     final bool hideOurAppsScreen = _shouldHideOurAppsScreen();
     final int effectiveIndex =
-        hideOurAppsScreen && _currentIndex == 4 ? 0 : _currentIndex;
-    final bool showUpdateBanner = effectiveIndex <= 3;
+        hideOurAppsScreen && _currentIndex == _ourAppsTabIndex
+            ? _homeTabIndex
+            : _currentIndex;
+    final bool showUpdateBanner =
+        _shouldShowMarketToolsForIndex(effectiveIndex);
 
     final bool showFullShimmer = provider.isLoading &&
-        effectiveIndex == 0 &&
+        effectiveIndex == _homeTabIndex &&
         provider.currentGoldPrice == null;
 
     final Widget content = showFullShimmer
@@ -137,12 +216,19 @@ class HomeScreenState extends State<HomeScreen>
             index: effectiveIndex,
             children: [
               _buildHomeContent(provider),
-              CalculatorScreen(),
-              CaliberScreen(),
-              BullionScreen(),
-              hideOurAppsScreen ? const SizedBox.shrink() : OurAppsScreen(),
-              AboutScreen(),
-              ContactScreen(),
+              const CalculatorScreen(),
+              const ZakatCalculatorScreen(),
+              const CaliberScreen(),
+              const BullionScreen(),
+              const ProfitLossScreen(),
+              const EducationalContentScreen(),
+              hideOurAppsScreen
+                  ? const SizedBox.shrink()
+                  : const OurAppsScreen(),
+              const AboutScreen(),
+              const ContactScreen(),
+              const AccountScreen(),
+              AnalysisPerformanceScreen(chartRefreshTick: _chartRefreshTick),
             ],
           );
 
@@ -150,17 +236,21 @@ class HomeScreenState extends State<HomeScreen>
     final horizontalPadding = pagePad.horizontal / 2;
 
     final Widget topBanner = showUpdateBanner
-        ? Padding(
-            padding: EdgeInsets.fromLTRB(
-              horizontalPadding,
-              16,
-              horizontalPadding,
-              2,
+        ? Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [_headerSurfaceBottom, _headerSurfaceTop],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              border: Border(
+                bottom: BorderSide(
+                  color: _silverAccent.withValues(alpha: 0.08),
+                ),
+              ),
             ),
-            child: TopLastUpdateBanner(
-              lastUpdatedUtc: provider.currentGoldPrice?.lastUpdated,
-              isLoading: provider.isLoading,
-            ),
+            child: _buildTopUpdateSection(provider, horizontalPadding),
           )
         : const SizedBox.shrink();
 
@@ -172,7 +262,139 @@ class HomeScreenState extends State<HomeScreen>
     );
   }
 
-  AppBar _buildAppBar(BuildContext context, GoldProvider provider) {
+  AppBar _buildAppBar(
+    BuildContext context, {
+    required bool isDesktopNav,
+    required bool isAuthenticated,
+  }) {
+    return AppBar(
+      backgroundColor: _headerSurfaceBottom,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      centerTitle: false,
+      automaticallyImplyLeading: false,
+      toolbarHeight:
+          _headerRowHeight + _headerTopPadding + _headerBottomPadding,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [_headerSurfaceTop, _headerSurfaceBottom],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+          border: Border(
+            bottom: BorderSide(
+              color: _silverAccent.withValues(alpha: 0.10),
+            ),
+          ),
+        ),
+      ),
+      titleSpacing: Responsive.isMobile(context) ? 8 : 16,
+      title: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          10,
+          _headerTopPadding,
+          10,
+          _headerBottomPadding,
+        ),
+        child: SizedBox(
+          height: _headerRowHeight,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: _openAlmurakibWebsiteFromLogo,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    height: 36,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildHeaderActionButton(
+                    tooltip: 'الرئيسية',
+                    onTap: () => _navigateToTab(_homeTabIndex),
+                    child: Icon(
+                      _currentIndex == _homeTabIndex
+                          ? Icons.home_rounded
+                          : Icons.home_outlined,
+                      color: _silverAccent,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildHeaderActionButton(
+                    tooltip: isAuthenticated ? 'حسابي' : 'تسجيل الدخول',
+                    onTap: () => _navigateToTab(_accountTabIndex),
+                    child: Icon(
+                      _currentIndex == _accountTabIndex
+                          ? (isAuthenticated
+                              ? Icons.person
+                              : Icons.login_rounded)
+                          : (isAuthenticated
+                              ? Icons.person_outline_rounded
+                              : Icons.login_rounded),
+                      color: _silverAccent,
+                    ),
+                  ),
+                  if (!isDesktopNav) ...[
+                    const SizedBox(width: 10),
+                    _buildHeaderActionButton(
+                      tooltip: '\u0627\u0644\u0642\u0627\u0626\u0645\u0629',
+                      onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                      child: const Icon(
+                        Icons.menu_rounded,
+                        color: _silverAccent,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: const [],
+    );
+  }
+
+  Widget _buildHeaderActionButton({
+    required String tooltip,
+    required VoidCallback? onTap,
+    required Widget child,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _silverAccent.withValues(
+                  alpha: onTap == null ? 0.15 : 0.35,
+                ),
+              ),
+            ),
+            child: Center(child: child),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopUpdateSection(
+      GoldProvider provider, double horizontalPadding) {
     final currencies = Currency.getCurrencies();
     final currentCurrency = currencies.firstWhere(
       (c) => c.code == provider.selectedCurrency,
@@ -180,130 +402,171 @@ class HomeScreenState extends State<HomeScreen>
         code: provider.selectedCurrency,
         name: provider.selectedCurrency,
         symbol: provider.selectedCurrency,
-        flag: '🏳️',
+        flag: '\uD83C\uDFF3\uFE0F',
       ),
     );
 
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: false,
-      automaticallyImplyLeading: false,
-      toolbarHeight: 60,
-      titleSpacing: Responsive.isMobile(context) ? 8 : 16,
-      title: Padding(
-        padding: const EdgeInsetsDirectional.only(start: 12.0),
-        child: SizedBox(
-          height: 40,
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: _openAlmurakibWebsiteFromLogo,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  height: 40,
-                  fit: BoxFit.contain,
+    final updateBanner = TopLastUpdateBanner(
+      lastUpdatedUtc: provider.currentGoldPrice?.lastUpdated,
+    );
+
+    final currencyButton = _buildBannerCurrencyButton(
+      currentCurrency: currentCurrency,
+      provider: provider,
+    );
+
+    final refreshButton = KeyedSubtree(
+      key: _refreshHintKey,
+      child: _buildUpdateRefreshButton(
+        onTap: provider.isLoading
+            ? null
+            : () {
+                setState(() => _chartRefreshTick++);
+                provider.setCurrency(provider.selectedCurrency);
+              },
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: provider.isLoading
+              ? const SizedBox(
+                  key: ValueKey('loading'),
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    valueColor: AlwaysStoppedAnimation<Color>(_silverAccent),
+                  ),
+                )
+              : const Icon(
+                  key: ValueKey('refresh'),
+                  Icons.refresh_rounded,
+                  color: _silverAccent,
+                  size: 20,
                 ),
+        ),
+      ),
+    );
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding,
+        _headerVerticalPadding,
+        horizontalPadding,
+        _headerVerticalPadding,
+      ),
+      child: SizedBox(
+        height: _headerRowHeight,
+        child: Row(
+          textDirection: TextDirection.rtl,
+          children: [
+            Expanded(child: updateBanner),
+            const SizedBox(width: 8),
+            currencyButton,
+            const SizedBox(width: 8),
+            refreshButton,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBannerCurrencyButton({
+    required Currency currentCurrency,
+    required GoldProvider provider,
+  }) {
+    return Tooltip(
+      message:
+          '\u062A\u063A\u064A\u064A\u0631 \u0627\u0644\u0639\u0645\u0644\u0629',
+      child: Material(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: _showCurrencySelector,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            height: 38,
+            width: 108,
+            padding: const EdgeInsetsDirectional.fromSTEB(8, 0, 6, 0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(
+                color: _silverAccent.withValues(alpha: 0.34),
               ),
+              gradient: LinearGradient(
+                colors: [
+                  _silverAccent.withValues(alpha: 0.10),
+                  Colors.white.withValues(alpha: 0.02),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  currentCurrency.flag,
+                  style: const TextStyle(fontSize: 18),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    provider.selectedCurrency,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.expand_more_rounded,
+                  size: 18,
+                  color: _silverAccent,
+                ),
+              ],
             ),
           ),
         ),
       ),
-      actions: [
-        Padding(
-          padding: const EdgeInsetsDirectional.only(end: 4.0),
-          child: SizedBox(
-            height: 36,
-            child: Center(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: _showCurrencySelector,
-                child: Container(
-                  height: 36,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardDark,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _silverAccent.withAlpha((0.50 * 255).toInt()),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(currentCurrency.flag,
-                          style: const TextStyle(fontSize: 18)),
-                      const SizedBox(width: 6),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 5.0),
-                        child: Text(
-                          provider.selectedCurrency,
-                          style: const TextStyle(
-                            color: _silverAccent,
-                            fontSize: 12,
-                            fontFamily: 'Tajawal',
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 2),
-                      const Padding(
-                        padding: EdgeInsets.only(top: 1.0),
-                        child: Icon(
-                          Icons.arrow_drop_down,
-                          size: 18,
-                          color: _silverAccent,
-                        ),
-                      ),
-                    ],
-                  ),
+    );
+  }
+
+  Widget _buildUpdateRefreshButton({
+    required VoidCallback? onTap,
+    required Widget child,
+  }) {
+    return Tooltip(
+      message: '\u062A\u062D\u062F\u064A\u062B',
+      child: Material(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(
+                color: _silverAccent.withValues(
+                  alpha: onTap == null ? 0.20 : 0.40,
                 ),
               ),
-            ),
-          ),
-        ),
-
-        // ✅ زر التحديث + Hint
-        Padding(
-          padding: const EdgeInsetsDirectional.only(end: 8.0),
-          child: KeyedSubtree(
-            key: _refreshHintKey,
-            child: IconButton(
-              onPressed: provider.isLoading
-                  ? null
-                  : () {
-                      setState(() => _chartRefreshTick++);
-                      provider.setCurrency(provider.selectedCurrency);
-                    },
-              icon: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                child: provider.isLoading
-                    ? const SizedBox(
-                        key: ValueKey('loading'),
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            _silverAccent,
-                          ),
-                        ),
-                      )
-                    : const Icon(
-                        key: ValueKey('icon'),
-                        Icons.refresh,
-                        color: _silverAccent,
-                      ),
+              gradient: LinearGradient(
+                colors: [
+                  _silverAccent.withValues(alpha: 0.12),
+                  Colors.white.withValues(alpha: 0.02),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              tooltip: 'تحديث الأسعار',
             ),
+            child: Center(child: child),
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -334,18 +597,6 @@ class HomeScreenState extends State<HomeScreen>
               isPositive: price.isPositive,
               currency: provider.selectedCurrency,
             ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'آخر تحديث: ${_formatLastUpdated(price.lastUpdated)}',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildPriceChart(),
             const SizedBox(height: 14),
             _buildLast10DaysTable(
               provider: provider,
@@ -368,13 +619,13 @@ class HomeScreenState extends State<HomeScreen>
         children: [
           const Icon(Icons.info_outline, color: _silverAccent, size: 36),
           const SizedBox(height: 12),
-          Text(
-            'لا توجد بيانات متاحة حالياً',
+          const Text(
+            'لا توجد بيانات متاحة حاليا.',
             style: AppTextStyles.headingSmall,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'اضغط على زر التحديث لإعادة تحميل أسعار الفضة.',
             style: AppTextStyles.bodySmall,
             textAlign: TextAlign.center,
@@ -411,7 +662,7 @@ class HomeScreenState extends State<HomeScreen>
     );
   }
 
-  /// ✅ جدول واحد فقط: الأسعار لآخر 10 أيام (تاريخ - سعر)
+  /// âœ… ط¬ط¯ظˆظ„ ظˆط§ط­ط¯ ظپظ‚ط·: ط§ظ„ط£ط³ط¹ط§ط± ظ„ط¢ط®ط± 10 ط£ظٹط§ظ… (طھط§ط±ظٹط® - ط³ط¹ط±)
   Widget _buildLast10DaysTable({
     required GoldProvider provider,
     required DateTime lastUpdated,
@@ -483,7 +734,7 @@ class HomeScreenState extends State<HomeScreen>
     final firstDistance = (prices.first - latestPrice).abs();
     final lastDistance = (prices.last - latestPrice).abs();
 
-    // إذا أقرب نقطة للسعر الحالي كانت في البداية، فالغالب أن الترتيب Newest→Oldest.
+    // ط¥ط°ط§ ط£ظ‚ط±ط¨ ظ†ظ‚ط·ط© ظ„ظ„ط³ط¹ط± ط§ظ„ط­ط§ظ„ظٹ ظƒط§ظ†طھ ظپظٹ ط§ظ„ط¨ط¯ط§ظٹط©طŒ ظپط§ظ„ط؛ط§ظ„ط¨ ط£ظ† ط§ظ„طھط±طھظٹط¨ Newestâ†’Oldest.
     if (firstDistance < lastDistance) {
       return prices.reversed.toList();
     }
@@ -491,7 +742,7 @@ class HomeScreenState extends State<HomeScreen>
     return prices;
   }
 
-  // ✅✅ المطلوب: التاريخ أقصى يمين (Right Edge) والسعر أقصى شمال (Left Edge)
+  // âœ…âœ… ط§ظ„ظ…ط·ظ„ظˆط¨: ط§ظ„طھط§ط±ظٹط® ط£ظ‚طµظ‰ ظٹظ…ظٹظ† (Right Edge) ظˆط§ظ„ط³ط¹ط± ط£ظ‚طµظ‰ ط´ظ…ط§ظ„ (Left Edge)
   Widget _simpleDatePriceTable({
     required DateTime lastUpdated,
     required List<double> prices,
@@ -525,25 +776,26 @@ class HomeScreenState extends State<HomeScreen>
       return base.subtract(Duration(days: daysBack));
     }
 
-    Widget _row({
-      required Widget leftPrice, // ✅ أقصى الشمال
-      required Widget rightDate, // ✅ أقصى اليمين
+    Widget rowItem({
+      required Widget leftPrice, // âœ… ط£ظ‚طµظ‰ ط§ظ„ط´ظ…ط§ظ„
+      required Widget rightDate, // âœ… ط£ظ‚طµظ‰ ط§ظ„ظٹظ…ظٹظ†
     }) {
       return Padding(
-        // تقدر تقللها لو عايز أقرب للحافة
+        // طھظ‚ط¯ط± طھظ‚ظ„ظ„ظ‡ط§ ظ„ظˆ ط¹ط§ظٹط² ط£ظ‚ط±ط¨ ظ„ظ„ط­ط§ظپط©
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: IntrinsicHeight(
           child: Row(
-            // ✅ LTR عشان أول عنصر يبقى أقصى يسار وآخر عنصر أقصى يمين
+            // âœ… LTR ط¹ط´ط§ظ† ط£ظˆظ„ ط¹ظ†طµط± ظٹط¨ظ‚ظ‰ ط£ظ‚طµظ‰ ظٹط³ط§ط± ظˆط¢ط®ط± ط¹ظ†طµط± ط£ظ‚طµظ‰ ظٹظ…ظٹظ†
             textDirection: TextDirection.ltr,
             children: [
-              Expanded(flex: 2, child: leftPrice), // ✅ يسار: السعر
+              Expanded(flex: 2, child: leftPrice), // âœ… ظٹط³ط§ط±: ط§ظ„ط³ط¹ط±
               VerticalDivider(
                 width: 22,
                 thickness: 1,
                 color: dividerColor,
               ),
-              Expanded(flex: 3, child: rightDate), // ✅ يمين: التاريخ
+              Expanded(
+                  flex: 3, child: rightDate), // âœ… ظٹظ…ظٹظ†: ط§ظ„طھط§ط±ظٹط®
             ],
           ),
         ),
@@ -558,8 +810,8 @@ class HomeScreenState extends State<HomeScreen>
       ),
       child: Column(
         children: [
-          // ✅ Header
-          _row(
+          // âœ… Header
+          rowItem(
             leftPrice: Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -583,13 +835,13 @@ class HomeScreenState extends State<HomeScreen>
           ),
           Divider(height: 1, color: dividerColor),
 
-          // ✅ Rows
+          // âœ… Rows
           for (int i = prices.length - 1; i >= 0; i--) ...[
             Container(
               color: (prices.length - 1 - i).isEven
                   ? Colors.transparent
                   : AppColors.cardDark.withAlpha((0.10 * 255).toInt()),
-              child: _row(
+              child: rowItem(
                 leftPrice: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -616,46 +868,6 @@ class HomeScreenState extends State<HomeScreen>
             ),
             if (i != 0) Divider(height: 1, color: rowDividerColor),
           ],
-        ],
-      ),
-    );
-  }
-
-  String _formatLastUpdated(DateTime time) {
-    final local = time.toLocal();
-    final offset = local.timeZoneOffset;
-    final sign = offset.isNegative ? '-' : '+';
-    final hours = offset.inHours.abs();
-    final minutes = offset.inMinutes.abs() % 60;
-    final gmt = minutes == 0
-        ? 'GMT$sign$hours'
-        : 'GMT$sign$hours:${minutes.toString().padLeft(2, '0')}';
-
-    return '${local.year}/${local.month.toString().padLeft(2, '0')}/${local.day.toString().padLeft(2, '0')} '
-        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')} ($gmt)';
-  }
-
-  Widget _buildPriceChart() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'حركة السعر لآخر 10 أيام',
-            style: AppTextStyles.headingSmall.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 200,
-            child: PriceChart(refreshTick: _chartRefreshTick),
-          ),
         ],
       ),
     );
@@ -700,21 +912,235 @@ class HomeScreenState extends State<HomeScreen>
     );
   }
 
-  void _onTabTapped(int index) {
-    if (_shouldHideOurAppsScreen() && index == 4) {
-      setState(() {
-        _currentIndex = 0;
-      });
-      return;
+  bool _isDesktopNav(BuildContext context) {
+    return MediaQuery.of(context).size.width >= _desktopNavBreakpoint;
+  }
+
+  Drawer _buildSideDrawer(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final drawerWidth = screenWidth > 380 ? 320.0 : screenWidth * 0.86;
+
+    return Drawer(
+      width: drawerWidth,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      child: _buildSideNavigationPanel(closeOnSelect: true),
+    );
+  }
+
+  Widget _buildSideNavigationPanel({required bool closeOnSelect}) {
+    final items = _navigationItems(hideOurApps: _shouldHideOurAppsScreen());
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F1116), Color(0xFF161A22), Color(0xFF1A1F29)],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+        ),
+        border: Border.all(color: Colors.white10, width: 0.8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 22,
+            spreadRadius: 2,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: ListView.separated(
+          padding: const EdgeInsets.fromLTRB(10, 16, 10, 18),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 6),
+          itemBuilder: (context, i) {
+            final item = items[i];
+            final bool isSelected = _currentIndex == item.index;
+
+            return AnimatedContainer(
+              duration: AppAnimations.buttonAnimation,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? _silverAccent.withValues(alpha: 0.16)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isSelected
+                      ? _silverAccent.withValues(alpha: 0.35)
+                      : Colors.white.withValues(alpha: 0.05),
+                ),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => _navigateToTab(
+                    item.index,
+                    closeDrawer: closeOnSelect,
+                  ),
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsetsDirectional.fromSTEB(
+                      12,
+                      6,
+                      10,
+                      6,
+                    ),
+                    leading: Icon(
+                      item.icon,
+                      size: 22,
+                      color:
+                          isSelected ? _silverAccent : AppColors.textSecondary,
+                    ),
+                    title: Text(
+                      item.title,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: isSelected
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(
+                            Icons.check_circle_rounded,
+                            size: 18,
+                            color: _silverAccent,
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  List<_SideNavItem> _navigationItems({required bool hideOurApps}) {
+    return [
+      const _SideNavItem(
+        index: _homeTabIndex,
+        title: 'الصفحة الرئيسية',
+        icon: Icons.home_outlined,
+      ),
+      const _SideNavItem(
+        index: _analysisTabIndex,
+        title: 'التحليل والأداء',
+        icon: Icons.analytics_outlined,
+      ),
+      const _SideNavItem(
+        index: _calculatorTabIndex,
+        title: 'حاسبة سعر الفضة',
+        icon: Icons.calculate_outlined,
+      ),
+      const _SideNavItem(
+        index: _zakatTabIndex,
+        title: 'حاسبة زكاة الفضة',
+        icon: Icons.mosque_outlined,
+      ),
+      const _SideNavItem(
+        index: _calibersTabIndex,
+        title: 'أسعار العيارات',
+        icon: Icons.diamond_outlined,
+      ),
+      const _SideNavItem(
+        index: _bullionsTabIndex,
+        title: 'أسعار السبائك',
+        icon: Icons.auto_awesome_outlined,
+      ),
+      const _SideNavItem(
+        index: _profitLossTabIndex,
+        title: 'حاسبة الربح والخسارة',
+        icon: Icons.trending_up_rounded,
+      ),
+      const _SideNavItem(
+        index: _educationTabIndex,
+        title: 'المحتوى التعليمي',
+        icon: Icons.menu_book_outlined,
+      ),
+      if (!hideOurApps)
+        const _SideNavItem(
+          index: _ourAppsTabIndex,
+          title: 'تطبيقاتنا',
+          icon: Icons.apps_outlined,
+        ),
+      const _SideNavItem(
+        index: _aboutTabIndex,
+        title: 'عن التطبيق',
+        icon: Icons.info_outline_rounded,
+      ),
+      const _SideNavItem(
+        index: _contactTabIndex,
+        title: 'اتصل بنا',
+        icon: Icons.contact_page_outlined,
+      ),
+    ];
+  }
+
+  void _navigateToTab(int index, {bool closeDrawer = false}) {
+    if (_shouldHideOurAppsScreen() && index == _ourAppsTabIndex) {
+      index = _homeTabIndex;
     }
+
+    if (closeDrawer && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+
+    if (_currentIndex == index) return;
 
     setState(() {
       _currentIndex = index;
     });
+
+    final appManager = Provider.of<AppManagerProvider>(context, listen: false);
+    appManager.trackPageView(_trackingNameForTab(index));
+  }
+
+  String _trackingNameForTab(int index) {
+    switch (index) {
+      case _homeTabIndex:
+        return 'home';
+      case _calculatorTabIndex:
+        return 'silver_calculator';
+      case _zakatTabIndex:
+        return 'zakat_calculator';
+      case _calibersTabIndex:
+        return 'calibers';
+      case _bullionsTabIndex:
+        return 'bullions';
+      case _profitLossTabIndex:
+        return 'profit_loss';
+      case _educationTabIndex:
+        return 'education';
+      case _ourAppsTabIndex:
+        return 'our_apps';
+      case _aboutTabIndex:
+        return 'about';
+      case _contactTabIndex:
+        return 'contact';
+      case _accountTabIndex:
+        return 'account';
+      case _analysisTabIndex:
+        return 'analysis_performance';
+      default:
+        return 'tab_$index';
+    }
   }
 
   bool _shouldHideOurAppsScreen() {
     return defaultTargetPlatform == TargetPlatform.iOS;
+  }
+
+  bool _shouldShowMarketToolsForIndex(int index) {
+    return index == _homeTabIndex ||
+        index == _analysisTabIndex ||
+        index == _calculatorTabIndex ||
+        index == _zakatTabIndex ||
+        index == _calibersTabIndex ||
+        index == _bullionsTabIndex;
   }
 
   Future<void> _openAlmurakibWebsiteFromLogo() async {
@@ -804,194 +1230,32 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _showCurrencySelector() async {
-    final provider = Provider.of<GoldProvider>(context, listen: false);
+    final provider = context.read<GoldProvider>();
     final allCurrencies = Currency.getCurrencies();
 
-    final searchController = TextEditingController();
-    final focusNode = FocusNode();
-
-    await showModalBottomSheet(
+    final selected = await showModalBottomSheet<Currency>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.cardDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
-        return SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 12,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 12,
-            ),
-            child: StatefulBuilder(
-              builder: (context, setModalState) {
-                final q = searchController.text.trim().toLowerCase();
-
-                final filtered = q.isEmpty
-                    ? allCurrencies
-                    : allCurrencies.where((c) {
-                        return c.code.toLowerCase().contains(q) ||
-                            c.name.toLowerCase().contains(q);
-                      }).toList();
-
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha((0.18 * 255).toInt()),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text('تغيير العملة', style: AppTextStyles.headingMedium),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: searchController,
-                      focusNode: focusNode,
-                      textInputAction: TextInputAction.search,
-                      keyboardAppearance: Brightness.dark,
-                      cursorColor: _silverAccent,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'ابحث بالاسم أو الرمز (مثال: SAR / ريال)',
-                        hintStyle: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                        prefixIcon:
-                            const Icon(Icons.search, color: _silverAccent),
-                        suffixIcon: q.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: 'مسح',
-                                icon: const Icon(Icons.close,
-                                    color: AppColors.textSecondary, size: 20),
-                                onPressed: () {
-                                  searchController.clear();
-                                  setModalState(() {});
-                                  FocusScope.of(context)
-                                      .requestFocus(focusNode);
-                                },
-                              ),
-                        filled: true,
-                        fillColor: AppColors.background
-                            .withAlpha((0.55 * 255).toInt()),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: Colors.white.withAlpha((0.08 * 255).toInt()),
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: Colors.white.withAlpha((0.08 * 255).toInt()),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color:
-                                _silverAccent.withAlpha((0.65 * 255).toInt()),
-                            width: 1.1,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                      ),
-                      onChanged: (_) => setModalState(() {}),
-                    ),
-                    const SizedBox(height: 12),
-                    Flexible(
-                      child: filtered.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 22),
-                              child: Text(
-                                'لا توجد نتائج مطابقة',
-                                style: AppTextStyles.bodySmall.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              keyboardDismissBehavior:
-                                  ScrollViewKeyboardDismissBehavior.onDrag,
-                              shrinkWrap: true,
-                              itemCount: filtered.length,
-                              separatorBuilder: (_, __) => const Divider(
-                                color: Colors.white12,
-                                height: 1,
-                              ),
-                              itemBuilder: (context, index) {
-                                final currency = filtered[index];
-                                final isSelected =
-                                    currency.code == provider.selectedCurrency;
-
-                                return ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: Text(currency.flag,
-                                      style: const TextStyle(fontSize: 22)),
-                                  title: Text(
-                                    currency.name,
-                                    style: AppTextStyles.bodyLarge,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  subtitle: Text(
-                                    currency.code,
-                                    textDirection: TextDirection.ltr,
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                  trailing: isSelected
-                                      ? const Icon(Icons.check_circle,
-                                          color: _silverAccent)
-                                      : const Icon(Icons.chevron_right,
-                                          color: AppColors.textSecondary),
-                                  onTap: () async {
-                                    final prefs =
-                                        await SharedPreferences.getInstance();
-                                    await prefs.setString(
-                                      'selected_currency_code',
-                                      currency.code,
-                                    );
-
-                                    if (mounted) {
-                                      setState(() => _chartRefreshTick++);
-                                    }
-                                    provider.setCurrency(currency.code);
-
-                                    if (context.mounted) {
-                                      Navigator.pop(context);
-                                    }
-                                  },
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        );
-      },
+      builder: (_) => _CurrencySelectorSheet(
+        allCurrencies: allCurrencies,
+        selectedCurrencyCode: provider.selectedCurrency,
+      ),
     );
 
-    searchController.dispose();
-    focusNode.dispose();
+    if (!mounted || selected == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selected_currency_code', selected.code);
+
+    if (!mounted) return;
+
+    setState(() => _chartRefreshTick++);
+    provider.setCurrency(selected.code);
+    context.read<AppManagerProvider>().setSelectedCurrency(selected.code);
   }
 
   @override
@@ -999,5 +1263,244 @@ class HomeScreenState extends State<HomeScreen>
     AppLifecycleSignals.resumeTick.removeListener(_onResumeSignal);
     _animationController.dispose();
     super.dispose();
+  }
+}
+
+class _CurrencySelectorSheet extends StatefulWidget {
+  const _CurrencySelectorSheet({
+    required this.allCurrencies,
+    required this.selectedCurrencyCode,
+  });
+
+  final List<Currency> allCurrencies;
+  final String selectedCurrencyCode;
+
+  @override
+  State<_CurrencySelectorSheet> createState() => _CurrencySelectorSheetState();
+}
+
+class _CurrencySelectorSheetState extends State<_CurrencySelectorSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final sheetMaxHeight = mediaQuery.size.height * 0.82;
+    final q = _searchController.text.trim().toLowerCase();
+
+    final filtered = q.isEmpty
+        ? widget.allCurrencies
+        : widget.allCurrencies.where((c) {
+            return c.code.toLowerCase().contains(q) ||
+                c.name.toLowerCase().contains(q);
+          }).toList();
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 12,
+          bottom: mediaQuery.viewInsets.bottom + 12,
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: sheetMaxHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'تغيير العملة',
+                style: AppTextStyles.headingSmall.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _searchController,
+                focusNode: _focusNode,
+                textInputAction: TextInputAction.search,
+                keyboardAppearance: Brightness.dark,
+                cursorColor: _silverAccent,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'ابحث بالاسم أو الرمز (مثال: SAR / ريال)',
+                  hintStyle: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                  prefixIcon: const Icon(Icons.search, color: _silverAccent),
+                  suffixIcon: q.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'ظ…ط³ط­',
+                          icon: const Icon(
+                            Icons.close,
+                            color: AppColors.textSecondary,
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {});
+                            FocusScope.of(context).requestFocus(_focusNode);
+                          },
+                        ),
+                  filled: true,
+                  fillColor: AppColors.background.withValues(alpha: 0.55),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: _silverAccent.withValues(alpha: 0.65),
+                      width: 1.1,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 11,
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: filtered.isEmpty
+                    ? Center(
+                        child: Text(
+                          'ظ„ط§ طھظˆط¬ط¯ ظ†طھط§ط¦ط¬ ظ…ط·ط§ط¨ظ‚ط©',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const Divider(
+                          color: Colors.white12,
+                          height: 1,
+                        ),
+                        itemBuilder: (context, index) {
+                          final currency = filtered[index];
+                          final isSelected =
+                              currency.code == widget.selectedCurrencyCode;
+
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () => Navigator.of(context).pop(currency),
+                              child: SizedBox(
+                                height: 54,
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 30,
+                                      child: Center(
+                                        child: Text(
+                                          currency.flag,
+                                          textAlign: TextAlign.center,
+                                          strutStyle: const StrutStyle(
+                                            forceStrutHeight: true,
+                                            height: 1,
+                                            leading: 0,
+                                          ),
+                                          style: const TextStyle(
+                                            fontSize: 17,
+                                            height: 1,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 9),
+                                    Expanded(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            currency.name,
+                                            style: AppTextStyles.bodySmall
+                                                .copyWith(
+                                              color: AppColors.textPrimary,
+                                              fontSize: 12.8,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 1),
+                                          Text(
+                                            currency.code,
+                                            textDirection: TextDirection.ltr,
+                                            style: AppTextStyles.bodySmall
+                                                .copyWith(
+                                              fontSize: 11,
+                                              color: AppColors.textSecondary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    isSelected
+                                        ? const Icon(
+                                            Icons.check_circle,
+                                            color: _silverAccent,
+                                            size: 18,
+                                          )
+                                        : const Icon(
+                                            Icons.chevron_right,
+                                            color: AppColors.textSecondary,
+                                            size: 18,
+                                          ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

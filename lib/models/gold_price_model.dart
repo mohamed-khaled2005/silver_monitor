@@ -1,7 +1,7 @@
 class GoldPrice {
   final double ouncePrice;
   final double gramPrice;
-  final double change;        // التغيير بالقيمة المطلقة
+  final double change; // التغيير بالقيمة المطلقة
   final bool isPositive;
   final DateTime lastUpdated;
   final String currency;

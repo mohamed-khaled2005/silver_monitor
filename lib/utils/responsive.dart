@@ -2,20 +2,23 @@ import 'package:flutter/widgets.dart';
 import 'constants.dart';
 
 class Responsive {
-  static double _screenWidth(BuildContext context) => MediaQuery.of(context).size.width;
-  static double _screenHeight(BuildContext context) => MediaQuery.of(context).size.height;
-  
+  static double _screenWidth(BuildContext context) =>
+      MediaQuery.of(context).size.width;
+  static double _screenHeight(BuildContext context) =>
+      MediaQuery.of(context).size.height;
+
   static bool isMobile(BuildContext context) => _screenWidth(context) < 600;
-  static bool isTablet(BuildContext context) => _screenWidth(context) >= 600 && _screenWidth(context) < 1200;
+  static bool isTablet(BuildContext context) =>
+      _screenWidth(context) >= 600 && _screenWidth(context) < 1200;
   static bool isDesktop(BuildContext context) => _screenWidth(context) >= 1200;
-  
-  static double responsiveValue(BuildContext context, 
+
+  static double responsiveValue(BuildContext context,
       {required double mobile, double? tablet, double? desktop}) {
     if (isDesktop(context)) return desktop ?? tablet ?? mobile;
     if (isTablet(context)) return tablet ?? mobile;
     return mobile;
   }
-  
+
   static EdgeInsets responsivePadding(BuildContext context) {
     return EdgeInsets.symmetric(
       horizontal: responsiveValue(
@@ -27,7 +30,7 @@ class Responsive {
       vertical: AppDimensions.paddingMedium,
     );
   }
-  
+
   static double responsiveFontSize(BuildContext context,
       {required double mobile, double? tablet, double? desktop}) {
     return responsiveValue(

@@ -75,8 +75,7 @@ class _AnimatedCurrencySelectorState extends State<AnimatedCurrencySelector>
                 // نستخدم جراديانت الذهب الموجود حاليًا في الثيم
                 gradient: widget.isSelected ? AppColors.goldGradient : null,
                 color: widget.isSelected ? null : AppColors.cardDark,
-                borderRadius:
-                    BorderRadius.circular(AppDimensions.borderRadius),
+                borderRadius: BorderRadius.circular(AppDimensions.borderRadius),
                 border: Border.all(
                   color: AppColors.primaryGold
                       .withOpacity(_borderAnimation.value * 0.5),

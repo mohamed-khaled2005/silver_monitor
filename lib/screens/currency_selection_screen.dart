@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/currency_model.dart';
+import '../providers/app_manager_provider.dart';
 import '../providers/gold_provider.dart';
 import '../utils/constants.dart';
 import '../utils/responsive.dart';
@@ -15,7 +16,8 @@ class CurrencySelectionScreen extends StatefulWidget {
   const CurrencySelectionScreen({Key? key}) : super(key: key);
 
   @override
-  State<CurrencySelectionScreen> createState() => _CurrencySelectionScreenState();
+  State<CurrencySelectionScreen> createState() =>
+      _CurrencySelectionScreenState();
 }
 
 class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
@@ -98,6 +100,8 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
 
     final provider = Provider.of<GoldProvider>(context, listen: false);
     provider.setCurrency(code);
+    final appManager = Provider.of<AppManagerProvider>(context, listen: false);
+    appManager.setSelectedCurrency(code);
 
     if (!mounted) return;
 

@@ -172,26 +172,23 @@ class AboutScreen extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final bool isWide = constraints.maxWidth > 500;
-              final int crossAxisCount = isWide ? 2 : 1;
+              final double tileWidth = isWide
+                  ? (constraints.maxWidth - 12) / 2
+                  : constraints.maxWidth;
 
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: features.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: isWide ? 3.4 : 3.0,
-                ),
-                itemBuilder: (context, index) {
-                  final item = features[index];
-                  return _buildFeatureTile(
-                    icon: item['icon'] as IconData,
-                    title: item['title'] as String,
-                    description: item['desc'] as String,
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: features.map((item) {
+                  return SizedBox(
+                    width: tileWidth,
+                    child: _buildFeatureTile(
+                      icon: item['icon'] as IconData,
+                      title: item['title'] as String,
+                      description: item['desc'] as String,
+                    ),
                   );
-                },
+                }).toList(),
               );
             },
           ),

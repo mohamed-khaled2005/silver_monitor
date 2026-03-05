@@ -122,7 +122,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 6),
-            const AppSectionHeader(title: 'الحاسبة'),
+            const AppSectionHeader(title: 'حاسبة سعر الفضة'),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(16),

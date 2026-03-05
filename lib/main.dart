@@ -1,23 +1,21 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
 
-import 'screens/splash_screen.dart';
+import 'providers/app_manager_provider.dart';
 import 'providers/gold_provider.dart';
-import 'utils/constants.dart';
-
-// ✅ ADD
+import 'screens/splash_screen.dart';
+import 'services/push_notification_service.dart';
 import 'utils/app_lifecycle_refresh.dart';
+import 'utils/constants.dart';
+import 'widgets/app_manager_lifecycle_observer.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ OneSignal init
-  OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
-  OneSignal.initialize("cbc64a78-e9bf-413b-a050-df71c27bd1bf");
-
-  // ✅ طلب إذن الإشعارات (iOS + Android 13+)
-  await OneSignal.Notifications.requestPermission(true);
+  await Firebase.initializeApp();
+  PushNotificationService.registerBackgroundHandler();
 
   runApp(const MyApp());
 }
@@ -27,7 +25,6 @@ class MyApp extends StatelessWidget {
 
   Future<void> _refreshSilver(BuildContext context) async {
     final provider = context.read<GoldProvider>();
-
     if (provider.isLoading) return;
 
     final empty = provider.currentGoldPrice == null &&
@@ -38,7 +35,6 @@ class MyApp extends StatelessWidget {
       if (empty) {
         await provider.initializeData();
       } else {
-        // يجدد نفس العملة (وبيعمل fetch داخلياً)
         provider.setCurrency(provider.selectedCurrency);
       }
     } catch (_) {}
@@ -46,55 +42,99 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => GoldProvider(),
-      child: AppLifecycleRefresh(
-        // ✅ العميل عايز كل مرة يرجع (حتى لو سريع)
-        minInterval: Duration.zero,
-        minBackgroundDuration: Duration.zero,
-
-        // ✅ لما يفتح التطبيق (cold start) كمان
-        refreshOnStart: true,
-
-        onResumed: _refreshSilver,
-        child: MaterialApp(
-          title: 'مراقب الفضة',
-          debugShowCheckedModeBanner: false,
-
-          // ✅ RTL
-          builder: (context, child) {
-            return Directionality(
-              textDirection: TextDirection.rtl,
-              child: child ?? const SizedBox.shrink(),
-            );
-          },
-
-          theme: ThemeData(
-            primaryColor: AppColors.primaryGold,
-            scaffoldBackgroundColor: AppColors.background,
-            fontFamily: 'Tajawal',
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              titleTextStyle: TextStyle(
-                color: AppColors.primaryGold,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                fontFamily: 'Tajawal',
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<GoldProvider>(
+          create: (_) => GoldProvider(),
+        ),
+        ChangeNotifierProvider<AppManagerProvider>(
+          create: (_) => AppManagerProvider()..initialize(),
+        ),
+      ],
+      child: AppManagerLifecycleObserver(
+        child: AppLifecycleRefresh(
+          minInterval: Duration.zero,
+          minBackgroundDuration: Duration.zero,
+          refreshOnStart: true,
+          onResumed: _refreshSilver,
+          child: MaterialApp(
+            title: 'مراقب الفضة',
+            debugShowCheckedModeBanner: false,
+            locale: const Locale('ar'),
+            supportedLocales: const [
+              Locale('ar'),
+              Locale('en'),
+            ],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            builder: (context, child) => child ?? const SizedBox.shrink(),
+            theme: ThemeData(
+              brightness: Brightness.dark,
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: AppColors.primaryGold,
+                brightness: Brightness.dark,
+              ).copyWith(
+                primary: AppColors.primaryGold,
+                surface: AppColors.cardDark,
+                onSurface: AppColors.textPrimary,
               ),
-              iconTheme: IconThemeData(color: AppColors.primaryGold),
+              primaryColor: AppColors.primaryGold,
+              scaffoldBackgroundColor: AppColors.background,
+              fontFamily: 'Tajawal',
+              textTheme: ThemeData.dark().textTheme.apply(
+                    bodyColor: AppColors.textPrimary,
+                    displayColor: AppColors.textPrimary,
+                    fontFamily: 'Tajawal',
+                  ),
+              inputDecorationTheme: InputDecorationTheme(
+                labelStyle: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontFamily: 'Tajawal',
+                  fontWeight: FontWeight.w700,
+                ),
+                hintStyle: TextStyle(
+                  color: AppColors.textSecondary.withValues(alpha: 0.75),
+                  fontFamily: 'Tajawal',
+                ),
+                floatingLabelStyle: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontFamily: 'Tajawal',
+                  fontWeight: FontWeight.w800,
+                ),
+                prefixIconColor: AppColors.textSecondary,
+                suffixIconColor: AppColors.textSecondary,
+              ),
+              textSelectionTheme: TextSelectionThemeData(
+                cursorColor: AppColors.textPrimary,
+                selectionColor: AppColors.textPrimary.withValues(alpha: 0.26),
+                selectionHandleColor: AppColors.primaryGold,
+              ),
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                titleTextStyle: TextStyle(
+                  color: AppColors.primaryGold,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  fontFamily: 'Tajawal',
+                ),
+                iconTheme: IconThemeData(color: AppColors.primaryGold),
+              ),
+              bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+                backgroundColor: AppColors.cardDark,
+                selectedItemColor: AppColors.primaryGold,
+                unselectedItemColor: AppColors.textSecondary,
+              ),
+              visualDensity: VisualDensity.adaptivePlatformDensity,
             ),
-            bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-              backgroundColor: AppColors.cardDark,
-              selectedItemColor: AppColors.primaryGold,
-              unselectedItemColor: AppColors.textSecondary,
-            ),
-            visualDensity: VisualDensity.adaptivePlatformDensity,
+            home: const SplashScreen(),
           ),
-
-          home: const SplashScreen(),
         ),
       ),
     );
   }
 }
+

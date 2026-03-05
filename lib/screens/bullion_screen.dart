@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/app_manager_provider.dart';
 import '../providers/gold_provider.dart';
 import '../utils/constants.dart';
 import '../utils/responsive.dart';
@@ -16,6 +17,7 @@ class BullionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<GoldProvider>(context);
+    final appManager = Provider.of<AppManagerProvider>(context);
 
     return FadeAnimation(
       child: SingleChildScrollView(
@@ -24,11 +26,11 @@ class BullionScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 6),
-            const AppSectionHeader(title: 'السبائك'),
+            const AppSectionHeader(title: 'أسعار السبائك'),
             const SizedBox(height: 16),
             _buildHintChip(context),
             const SizedBox(height: 24),
-            _buildBullionTable(context, provider),
+            _buildBullionTable(context, provider, appManager),
           ],
         ),
       ),
@@ -68,7 +70,11 @@ class BullionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBullionTable(BuildContext context, GoldProvider provider) {
+  Widget _buildBullionTable(
+    BuildContext context,
+    GoldProvider provider,
+    AppManagerProvider appManager,
+  ) {
     final bullions = List.of(provider.bullions);
 
     if (bullions.isEmpty) {
@@ -140,6 +146,8 @@ class BullionScreen extends StatelessWidget {
           const SizedBox(height: 8),
           // ✅ صفوف السبائك (بدون Scroll أفقي، عمودين فقط)
           ...bullions.map((bullion) {
+            final favoriteKey = 'bullion:${bullion.type}';
+            final isFavorite = appManager.isFavoriteItem(favoriteKey);
             return Container(
               margin: const EdgeInsets.symmetric(vertical: 4),
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
@@ -169,6 +177,13 @@ class BullionScreen extends StatelessWidget {
                         color: _silverAccent,
                         fontWeight: FontWeight.w600,
                       ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => appManager.toggleFavoriteItem(favoriteKey),
+                    icon: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorite ? Colors.redAccent : _silverAccent,
                     ),
                   ),
                 ],

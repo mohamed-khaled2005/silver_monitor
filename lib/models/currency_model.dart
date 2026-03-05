@@ -1,10 +1,10 @@
 // lib/models/currency_model.dart
 
 class Currency {
-  final String code;   // كود العملة (مثلاً: USD, SAR)
-  final String name;   // اسم العملة بالعربي
+  final String code; // كود العملة (مثلاً: USD, SAR)
+  final String name; // اسم العملة بالعربي
   final String symbol; // الرمز (لو غير متوفر نحط الكود نفسه)
-  final String flag;   // علم الدولة (إيموجي)
+  final String flag; // علم الدولة (إيموجي)
 
   const Currency({
     required this.code,
@@ -16,7 +16,6 @@ class Currency {
   /// القائمة الرئيسية لكل العملات المدعومة في التطبيق
   static List<Currency> getCurrencies() {
     return const [
-
       // 🔹 بعض العملات الأساسية (لو كانت موجودة عندك قبل) + دعم إضافي
       Currency(
         code: 'USD',
