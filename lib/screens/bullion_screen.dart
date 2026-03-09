@@ -1,23 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_manager_provider.dart';
+
+import '../animations/fade_animation.dart';
 import '../providers/gold_provider.dart';
 import '../utils/constants.dart';
 import '../utils/responsive.dart';
-import '../animations/fade_animation.dart';
 import '../widgets/app_section_header.dart';
 
 class BullionScreen extends StatelessWidget {
-  const BullionScreen({Key? key}) : super(key: key);
+  const BullionScreen({super.key});
 
-  // 🎨 ألوان فضية خاصة بالشاشة دي
   static const Color _silverAccent = Color(0xFFC0C5D5);
-  static const Color _silverBorder = Color(0xFF9FA6B5);
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<GoldProvider>(context);
-    final appManager = Provider.of<AppManagerProvider>(context);
 
     return FadeAnimation(
       child: SingleChildScrollView(
@@ -28,69 +25,28 @@ class BullionScreen extends StatelessWidget {
             const SizedBox(height: 6),
             const AppSectionHeader(title: 'أسعار السبائك'),
             const SizedBox(height: 16),
-            _buildHintChip(context),
-            const SizedBox(height: 24),
-            _buildBullionTable(context, provider, appManager),
+            _buildBullionTable(provider),
           ],
         ),
       ),
     );
   }
 
-  /// شريحة توضيحية صغيرة أعلى الصفحة
-  Widget _buildHintChip(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: _silverBorder.withOpacity(0.7),
-          width: 1,
-        ),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.info_outline,
-            color: _silverAccent,
-            size: 18,
-          ),
-          SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              'أسعار سبائك الفضة حسب العملة المختارة',
-              style: AppTextStyles.bodySmall,
-              softWrap: true,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBullionTable(
-    BuildContext context,
-    GoldProvider provider,
-    AppManagerProvider appManager,
-  ) {
-    final bullions = List.of(provider.bullions);
+  Widget _buildBullionTable(GoldProvider provider) {
+    final bullions = List.of(provider.bullions)
+      ..sort((a, b) => a.weight.compareTo(b.weight));
 
     if (bullions.isEmpty) {
-      return Center(
+      return const Center(
         child: Padding(
-          padding: const EdgeInsets.only(top: 40),
+          padding: EdgeInsets.only(top: 40),
           child: Text(
-            'لا توجد بيانات متاحة لسبائك الفضة حالياً.',
+            'لا توجد بيانات متاحة لسبائك الفضة حاليًا.',
             style: AppTextStyles.bodyMedium,
           ),
         ),
       );
     }
-
-    // ترتيب تصاعدي حسب الوزن
-    bullions.sort((a, b) => a.weight.compareTo(b.weight));
 
     return Container(
       width: double.infinity,
@@ -100,7 +56,7 @@ class BullionScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.35),
+            color: Colors.black.withValues(alpha: 0.35),
             blurRadius: 14,
             spreadRadius: 2,
             offset: const Offset(0, 6),
@@ -110,11 +66,10 @@ class BullionScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ✅ هيدر الجدول (النوع | السعر)
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
             decoration: BoxDecoration(
-              color: AppColors.cardLight.withOpacity(0.9),
+              color: AppColors.cardLight.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
@@ -144,20 +99,16 @@ class BullionScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          // ✅ صفوف السبائك (بدون Scroll أفقي، عمودين فقط)
           ...bullions.map((bullion) {
-            final favoriteKey = 'bullion:${bullion.type}';
-            final isFavorite = appManager.isFavoriteItem(favoriteKey);
             return Container(
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+              margin: const EdgeInsets.symmetric(vertical: 3),
+              padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
-                  // النوع (مثال: "سبيكة 1 كيلوجرام فضة نقية")
                   Expanded(
                     flex: 2,
                     child: Text(
@@ -167,7 +118,6 @@ class BullionScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // السعر في نفس السطر + العملة
                   Expanded(
                     flex: 2,
                     child: Text(
@@ -177,13 +127,6 @@ class BullionScreen extends StatelessWidget {
                         color: _silverAccent,
                         fontWeight: FontWeight.w600,
                       ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => appManager.toggleFavoriteItem(favoriteKey),
-                    icon: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? Colors.redAccent : _silverAccent,
                     ),
                   ),
                 ],

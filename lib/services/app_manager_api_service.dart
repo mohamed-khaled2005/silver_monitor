@@ -149,7 +149,7 @@ class AppManagerApiService {
             throw const AppManagerApiException('Unsupported HTTP method');
         }
 
-        final data = _decode(response.body);
+        final data = _decode(response);
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return data;
         }
@@ -162,7 +162,7 @@ class AppManagerApiService {
       } catch (e) {
         if (attempt > retryCount) {
           throw AppManagerApiException(
-            'Unable to connect to apps manager API. $e',
+            'Unable to connect to apps manager API at $uri. $e',
           );
         }
         await Future<void>.delayed(
@@ -174,13 +174,25 @@ class AppManagerApiService {
     throw const AppManagerApiException('Unexpected request failure.');
   }
 
-  Map<String, dynamic> _decode(String rawBody) {
+  Map<String, dynamic> _decode(http.Response response) {
+    final rawBody = _decodeBodyText(response);
     if (rawBody.trim().isEmpty) {
       return <String, dynamic>{};
     }
     final decoded = jsonDecode(rawBody);
     if (decoded is Map<String, dynamic>) return decoded;
     return <String, dynamic>{'data': decoded};
+  }
+
+  String _decodeBodyText(http.Response response) {
+    final bytes = response.bodyBytes;
+    if (bytes.isEmpty) return '';
+
+    try {
+      return utf8.decode(bytes);
+    } catch (_) {
+      return response.body;
+    }
   }
 
   String? _extractMessage(Map<String, dynamic> data) {

@@ -7,7 +7,7 @@ import '../utils/responsive.dart';
 import '../widgets/app_section_header.dart';
 
 class ZakatCalculatorScreen extends StatefulWidget {
-  const ZakatCalculatorScreen({Key? key}) : super(key: key);
+  const ZakatCalculatorScreen({super.key});
 
   @override
   State<ZakatCalculatorScreen> createState() => _ZakatCalculatorScreenState();
@@ -15,21 +15,24 @@ class ZakatCalculatorScreen extends StatefulWidget {
 
 class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
   static const Color _silverAccent = Color(0xFFC0C5D5);
-  static const double _fixedSilverThresholdGrams = 595;
+  static const double _nisabPureSilverGrams = 595;
 
-  final TextEditingController _assetsController = TextEditingController();
-  final TextEditingController _debtsController = TextEditingController();
+  final TextEditingController _weightController = TextEditingController();
 
+  GoldCaliber? _selectedCaliber;
+  double? _autoPricePerGram;
+
+  double? _enteredWeight;
+  double? _pureEquivalent999Grams;
+  double? _marketValue;
   double? _zakatAmount;
-  double? _netAmount;
-  double? _thresholdValue;
+  double? _nisabCashValue;
   bool _eligible = false;
   String _message = '';
 
   @override
   void dispose() {
-    _assetsController.dispose();
-    _debtsController.dispose();
+    _weightController.dispose();
     super.dispose();
   }
 
@@ -38,68 +41,108 @@ class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
   }
 
   void _clearResult() {
+    _enteredWeight = null;
+    _pureEquivalent999Grams = null;
+    _marketValue = null;
     _zakatAmount = null;
-    _netAmount = null;
-    _thresholdValue = null;
+    _nisabCashValue = null;
     _eligible = false;
     _message = '';
   }
 
+  int _extractFineness(GoldCaliber caliber) {
+    final fromName = RegExp(r'(\d{3})').firstMatch(caliber.name);
+    if (fromName != null) {
+      final parsed = int.tryParse(fromName.group(1)!);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+
+    final purityRaw = caliber.purity.replaceAll('%', '').trim();
+    final purityValue = double.tryParse(purityRaw);
+    if (purityValue != null && purityValue > 0) {
+      return (purityValue * 10).round();
+    }
+    return 999;
+  }
+
+  void _syncSelectedCaliber(List<GoldCaliber> calibers) {
+    if (calibers.isEmpty) return;
+
+    final selectedName = _selectedCaliber?.name;
+    final next = calibers.firstWhere(
+      (c) => c.name == selectedName,
+      orElse: () => calibers.first,
+    );
+
+    final shouldUpdate = _selectedCaliber?.name != next.name ||
+        (_autoPricePerGram ?? -1) != next.pricePerGram;
+    if (!shouldUpdate) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _selectedCaliber = next;
+        _autoPricePerGram = next.pricePerGram;
+        if (_zakatAmount != null ||
+            _marketValue != null ||
+            _pureEquivalent999Grams != null ||
+            _message.isNotEmpty) {
+          _clearResult();
+        }
+      });
+    });
+  }
+
   void _calculate({
-    required double? gramPrice,
+    required GoldCaliber? caliber,
+    required double? gramPrice999,
+    required String currency,
   }) {
-    final assets = double.tryParse(_assetsController.text.trim());
-    final debts = double.tryParse(_debtsController.text.trim()) ?? 0;
-
-    if (assets == null || assets <= 0 || debts < 0) {
+    final weight = double.tryParse(_weightController.text.trim());
+    if (weight == null || weight <= 0) {
       setState(() {
         _clearResult();
-        _message = 'أدخل القيم بشكل صحيح.';
+        _message = 'أدخل وزنًا صحيحًا بالجرام.';
       });
       return;
     }
 
-    if (gramPrice == null || gramPrice <= 0) {
+    if (caliber == null) {
       setState(() {
         _clearResult();
-        _message = 'لا يوجد سعر جرام حالي. حدّث الأسعار أولًا.';
+        _message = 'اختر العيار أولًا.';
       });
       return;
     }
 
-    final net = assets - debts;
-    final thresholdValue = _fixedSilverThresholdGrams * gramPrice;
-
-    if (net <= 0) {
+    final pricePerGram = caliber.pricePerGram;
+    if (pricePerGram <= 0) {
       setState(() {
-        _zakatAmount = 0;
-        _netAmount = net;
-        _thresholdValue = thresholdValue;
-        _eligible = false;
-        _message =
-            'صافي المال بعد خصم الديون يساوي صفر أو أقل. لا زكاة واجبة الآن.';
+        _clearResult();
+        _message = 'السعر التلقائي غير متوفر حاليًا. حدّث الأسعار أولًا.';
       });
       return;
     }
 
-    if (net < thresholdValue) {
-      setState(() {
-        _zakatAmount = 0;
-        _netAmount = net;
-        _thresholdValue = thresholdValue;
-        _eligible = false;
-        _message =
-            'صافي المال أقل من الحد الشرعي (595 جرام فضة). لا زكاة واجبة الآن.';
-      });
-      return;
-    }
+    final fineness = _extractFineness(caliber);
+    final pureEquivalent = weight * (fineness / 999.0);
+    final valueNow = weight * pricePerGram;
+    final reachedNisab = pureEquivalent >= _nisabPureSilverGrams;
+    final zakatDue = reachedNisab ? valueNow * 0.025 : 0.0;
+    final nisabCash = gramPrice999 == null || gramPrice999 <= 0
+        ? null
+        : _nisabPureSilverGrams * gramPrice999;
 
     setState(() {
-      _zakatAmount = net * 0.025;
-      _netAmount = net;
-      _thresholdValue = thresholdValue;
-      _eligible = true;
-      _message = 'الزكاة المستحقة = 2.5% من صافي المال الذي بلغ الحد الشرعي.';
+      _enteredWeight = weight;
+      _pureEquivalent999Grams = pureEquivalent;
+      _marketValue = valueNow;
+      _zakatAmount = zakatDue;
+      _nisabCashValue = nisabCash;
+      _eligible = reachedNisab;
+      _message = reachedNisab
+          ? 'بلغت الكمية النصاب (595 جرام فضة خالصة). الزكاة = 2.5% من القيمة.'
+          : 'لم تبلغ الكمية النصاب الشرعي (595 جرام فضة خالصة). لا زكاة واجبة الآن.';
     });
   }
 
@@ -114,29 +157,26 @@ class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
       filled: true,
       fillColor: AppColors.background,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: Colors.transparent),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: Colors.transparent),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: _silverAccent),
       ),
     );
   }
 
-  Widget _inputField({
-    required TextEditingController controller,
-    required String label,
-  }) {
+  Widget _weightField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label,
+          'الوزن (جرام)',
           style: AppTextStyles.bodySmall.copyWith(
             color: AppColors.textSecondary,
             fontWeight: FontWeight.w800,
@@ -144,7 +184,7 @@ class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
         ),
         const SizedBox(height: 6),
         TextField(
-          controller: controller,
+          controller: _weightController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.left,
@@ -154,43 +194,86 @@ class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
           ),
           decoration: _inputDecoration(),
           onChanged: (_) {
-            if (_zakatAmount == null &&
-                _message.isEmpty &&
-                _netAmount == null &&
-                _thresholdValue == null) {
-              return;
+            if (_zakatAmount != null || _message.isNotEmpty) {
+              setState(_clearResult);
             }
-            setState(_clearResult);
           },
         ),
       ],
     );
   }
 
-  Widget _metricCard({
-    required IconData icon,
-    required String title,
-    required String value,
-  }) {
+  Widget _caliberField(List<GoldCaliber> calibers) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'العيار',
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<GoldCaliber>(
+          key: ValueKey(_selectedCaliber?.name ?? 'none'),
+          initialValue: _selectedCaliber,
+          items: calibers
+              .map(
+                (c) => DropdownMenuItem<GoldCaliber>(
+                  value: c,
+                  child: Text(
+                    '${c.name} (${c.purity})',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() {
+              _selectedCaliber = value;
+              _autoPricePerGram = value.pricePerGram;
+              _clearResult();
+            });
+          },
+          icon: const Icon(Icons.expand_more_rounded, color: _silverAccent),
+          decoration: _inputDecoration(),
+          dropdownColor: AppColors.cardDark,
+          style: const TextStyle(
+            color: Colors.white,
+            fontFamily: 'Tajawal',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _autoPriceField(String currency) {
+    final auto = _autoPricePerGram;
+    final hasPrice = auto != null && auto > 0;
+
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _silverAccent.withValues(alpha: 0.26)),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 17, color: _silverAccent),
+          const Icon(Icons.price_change_rounded,
+              color: _silverAccent, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  'السعر (تلقائي لكل جرام)',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w700,
@@ -198,7 +281,7 @@ class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  value,
+                  hasPrice ? _money(auto, currency) : 'غير متوفر حاليًا',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w900,
@@ -212,66 +295,43 @@ class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
     );
   }
 
-  Widget _buildLivePriceCard({
-    required double? gramPrice,
+  Widget _resultCard({
     required String currency,
   }) {
-    final hasPrice = gramPrice != null && gramPrice > 0;
+    final accent = _eligible ? _silverAccent : AppColors.error;
+    final due = _zakatAmount ?? 0;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: _silverAccent.withValues(alpha: 0.25),
+    Widget metric(String label, String value) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.price_change_outlined,
-                size: 18,
-                color: _silverAccent,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'سعر جرام الفضة الحالي (تلقائي)',
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 7),
-          Text(
-            hasPrice
-                ? _money(gramPrice, currency)
-                : 'غير متوفر حاليًا - حدّث الأسعار',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w900,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResultCard({
-    required String currency,
-    required double? gramPrice,
-  }) {
-    final accent = _eligible ? _silverAccent : AppColors.error;
-    final badgeText = _eligible ? 'زكاة واجبة' : 'لا زكاة واجبة';
-    final badgeBg = _eligible
-        ? _silverAccent.withValues(alpha: 0.16)
-        : AppColors.error.withValues(alpha: 0.18);
-    final amountValue = _zakatAmount?.toStringAsFixed(2) ?? '0.00';
+            Text(
+              value,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w900,
+              ),
+              textDirection: TextDirection.ltr,
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -279,61 +339,25 @@ class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
         gradient: LinearGradient(
           colors: [
             AppColors.cardDark,
-            AppColors.cardLight.withValues(alpha: 0.90),
+            AppColors.cardLight.withValues(alpha: 0.92),
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: accent, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withValues(alpha: 0.16),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                _eligible
-                    ? Icons.check_circle_outline_rounded
-                    : Icons.info_outline_rounded,
-                color: accent,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'نتيجة حساب الزكاة',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  badgeText,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: accent,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'نتيجة الحساب',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             _message,
             style: AppTextStyles.bodySmall.copyWith(
@@ -342,35 +366,35 @@ class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          _metricCard(
-            icon: Icons.account_balance_wallet_outlined,
-            title: 'صافي المال بعد الديون',
-            value: _money(_netAmount!, currency),
+          metric(
+            'الوزن المدخل',
+            '${(_enteredWeight ?? 0).toStringAsFixed(2)} جرام',
           ),
           const SizedBox(height: 8),
-          _metricCard(
-            icon: Icons.rule_folder_outlined,
-            title: 'الحد الشرعي (595 جرام فضة)',
-            value: _money(_thresholdValue!, currency),
+          metric(
+            'الوزن المكافئ عيار 999',
+            '${(_pureEquivalent999Grams ?? 0).toStringAsFixed(2)} جرام',
           ),
-          if (gramPrice != null) ...[
-            const SizedBox(height: 8),
-            _metricCard(
-              icon: Icons.sell_outlined,
-              title: 'سعر الجرام المستخدم بالحساب',
-              value: _money(gramPrice, currency),
-            ),
-          ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          metric(
+            'قيمة الفضة الحالية',
+            _money(_marketValue ?? 0, currency),
+          ),
+          const SizedBox(height: 8),
+          metric(
+            'النصاب الشرعي',
+            _nisabCashValue == null
+                ? '${_nisabPureSilverGrams.toStringAsFixed(0)} جرام فضة خالصة'
+                : '${_nisabPureSilverGrams.toStringAsFixed(0)} جرام ≈ ${_money(_nisabCashValue!, currency)}',
+          ),
+          const SizedBox(height: 10),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.24),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: accent.withValues(alpha: 0.38),
-              ),
+              border: Border.all(color: accent.withValues(alpha: 0.4)),
             ),
             child: Row(
               children: [
@@ -383,7 +407,7 @@ class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
                 ),
                 const Spacer(),
                 Text(
-                  '$amountValue $currency',
+                  '${due.toStringAsFixed(2)} $currency',
                   style: AppTextStyles.headingSmall.copyWith(
                     color: accent,
                     fontWeight: FontWeight.w900,
@@ -397,12 +421,45 @@ class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
     );
   }
 
+  Widget _noteCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded,
+              color: _silverAccent, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'ملاحظة: هذا الحساب تقديري اعتمادًا على الوزن والعيار والسعر الحالي. في حال وجود ديون، مستحقات، عروض تجارة، أو عوامل فقهية أخرى، يُرجى مراجعة جهة الإفتاء المعتمدة لتحديد الحكم النهائي.',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+                height: 1.45,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final pagePadding = Responsive.responsivePadding(context);
     final provider = context.watch<GoldProvider>();
-    final gramPrice = provider.currentGoldPrice?.gramPrice;
     final currency = provider.selectedCurrency;
+    final gramPrice999 = provider.currentGoldPrice?.gramPrice;
+    final calibers = provider.calibers;
+
+    _syncSelectedCaliber(calibers);
 
     return SingleChildScrollView(
       padding: pagePadding,
@@ -429,33 +486,28 @@ class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 Text(
-                  'أدخل إجمالي الأصول والديون فقط. سعر جرام الفضة يتم جلبه تلقائيًا، والحد الشرعي ثابت (595 جرام فضة).',
+                  'أدخل الوزن، اختر العيار، وسيتم تعبئة السعر تلقائيًا. يتم تحويل الوزن عكسيًا إلى مكافئ عيار 999 ثم فحص النصاب (595 جرام).',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.textSecondary,
                     height: 1.45,
                   ),
                 ),
                 const SizedBox(height: 12),
-                _buildLivePriceCard(
-                  gramPrice: gramPrice,
-                  currency: currency,
-                ),
+                _weightField(),
                 const SizedBox(height: 10),
-                _inputField(
-                  controller: _assetsController,
-                  label: 'إجمالي الأصول',
-                ),
+                _caliberField(calibers),
                 const SizedBox(height: 10),
-                _inputField(
-                  controller: _debtsController,
-                  label: 'إجمالي الديون',
-                ),
+                _autoPriceField(currency),
                 const SizedBox(height: 14),
                 SizedBox(
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: () => _calculate(gramPrice: gramPrice),
+                    onPressed: () => _calculate(
+                      caliber: _selectedCaliber,
+                      gramPrice999: gramPrice999,
+                      currency: currency,
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _silverAccent,
                       foregroundColor: Colors.black,
@@ -482,14 +534,14 @@ class _ZakatCalculatorScreenState extends State<ZakatCalculatorScreen> {
                   ),
                 ],
                 if (_zakatAmount != null &&
-                    _netAmount != null &&
-                    _thresholdValue != null) ...<Widget>[
+                    _marketValue != null &&
+                    _pureEquivalent999Grams != null &&
+                    _enteredWeight != null) ...<Widget>[
                   const SizedBox(height: 14),
-                  _buildResultCard(
-                    currency: currency,
-                    gramPrice: gramPrice,
-                  ),
+                  _resultCard(currency: currency),
                 ],
+                const SizedBox(height: 12),
+                _noteCard(),
               ],
             ),
           ),

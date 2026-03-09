@@ -1,6 +1,46 @@
 import 'package:flutter/foundation.dart';
 import '../services/forex_api_service.dart';
 
+enum ChartRange {
+  week,
+  month,
+  threeMonths,
+  sixMonths,
+  year,
+}
+
+extension ChartRangeX on ChartRange {
+  int get days {
+    switch (this) {
+      case ChartRange.week:
+        return 7;
+      case ChartRange.month:
+        return 30;
+      case ChartRange.threeMonths:
+        return 90;
+      case ChartRange.sixMonths:
+        return 180;
+      case ChartRange.year:
+        return 365;
+    }
+  }
+
+  String get labelAr {
+    switch (this) {
+      case ChartRange.week:
+        return 'أسبوع';
+      case ChartRange.month:
+        return 'شهر';
+      case ChartRange.threeMonths:
+        return '3 شهور';
+      case ChartRange.sixMonths:
+        return '6 شهور';
+      case ChartRange.year:
+        return 'سنة';
+    }
+  }
+}
+
 /// موديل سعر الفضة (أونصة + جرام)
 class GoldPrice {
   final double ouncePrice;
@@ -72,6 +112,16 @@ class GoldProvider with ChangeNotifier {
 
   // 🟣 بيانات الشارت (أسعار الأونصة بالأيام)
   List<double> _weeklyOuncePrices = [];
+  final Map<ChartRange, List<double>> _historyByRange =
+      <ChartRange, List<double>>{};
+  final Set<ChartRange> _loadingChartRanges = <ChartRange>{};
+  ChartRange _selectedChartRange = ChartRange.week;
+  double _usdToSelectedRate = 1.0;
+  int _historyRequestId = 0;
+  Future<void>? _analysisPreloadTask;
+  PivotPointsData? _pivotPoints;
+  bool _isPivotPointsLoading = false;
+  String? _pivotPointsError;
 
   // ======= Getters =======
   String get selectedCurrency => _selectedCurrency;
@@ -80,7 +130,53 @@ class GoldProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   List<GoldCaliber> get calibers => _calibers;
   List<Bullion> get bullions => _bullions;
-  List<double> get weeklyOuncePrices => _weeklyOuncePrices;
+  List<double> get weeklyOuncePrices =>
+      _historyByRange[ChartRange.week] ?? _weeklyOuncePrices;
+  ChartRange get selectedChartRange => _selectedChartRange;
+  List<double> get selectedChartPrices =>
+      _historyByRange[_selectedChartRange] ?? const <double>[];
+  PivotPointsData? get pivotPoints => _pivotPoints;
+  bool get isPivotPointsLoading => _isPivotPointsLoading;
+  String? get pivotPointsError => _pivotPointsError;
+
+  List<double> chartPricesFor(ChartRange range) =>
+      _historyByRange[range] ?? const <double>[];
+
+  bool isChartRangeLoading(ChartRange range) =>
+      _loadingChartRanges.contains(range);
+  bool get hasAllChartRangesLoaded =>
+      ChartRange.values.every((r) => _historyByRange[r]?.isNotEmpty ?? false);
+
+  Future<void> ensurePivotPointsLoaded({bool force = false}) async {
+    if (!force && _pivotPoints != null) {
+      return;
+    }
+    if (_isPivotPointsLoading) {
+      return;
+    }
+
+    if (_currentGoldPrice == null) {
+      await fetchGoldPrices();
+      return;
+    }
+
+    _isPivotPointsLoading = true;
+    _pivotPointsError = null;
+    notifyListeners();
+
+    try {
+      final pivotUsd = await _api.getPivotPoints(
+        symbol: _silverSymbol,
+        period: '1D',
+      );
+      _pivotPoints = pivotUsd.scaled(_usdToSelectedRate);
+    } catch (e) {
+      _pivotPointsError = e.toString();
+    } finally {
+      _isPivotPointsLoading = false;
+      notifyListeners();
+    }
+  }
 
   // ======= إعداد أولي =======
   Future<void> initializeData() async {
@@ -97,10 +193,61 @@ class GoldProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setChartRange(
+    ChartRange range, {
+    bool loadIfNeeded = true,
+  }) async {
+    if (_selectedChartRange == range) {
+      if (loadIfNeeded) {
+        await ensureSelectedChartRangeLoaded();
+      }
+      return;
+    }
+
+    _selectedChartRange = range;
+    notifyListeners();
+    if (loadIfNeeded) {
+      await ensureSelectedChartRangeLoaded();
+    }
+  }
+
+  Future<void> ensureSelectedChartRangeLoaded() async {
+    await _ensureHistoryForRange(_selectedChartRange);
+  }
+
+  Future<void> preloadAnalysisChartRanges({bool force = false}) async {
+    if (_currentGoldPrice == null) return;
+    if (!force && hasAllChartRangesLoaded) return;
+
+    final existingTask = _analysisPreloadTask;
+    if (existingTask != null) {
+      await existingTask;
+      return;
+    }
+
+    final requestId = _historyRequestId;
+    final task = _preloadAllChartRangesFromYearHistory(
+      requestId: requestId,
+      usdToSelectedRate: _usdToSelectedRate,
+    );
+    _analysisPreloadTask = task;
+    try {
+      await task;
+    } finally {
+      if (identical(_analysisPreloadTask, task)) {
+        _analysisPreloadTask = null;
+      }
+    }
+  }
+
   // ======= جلب الأسعار من الـ API =======
   Future<void> fetchGoldPrices() async {
     _isLoading = true;
+    _isPivotPointsLoading = true;
     _errorMessage = null;
+    _pivotPointsError = null;
+    _pivotPoints = null;
+    final int requestId = ++_historyRequestId;
     notifyListeners();
 
     try {
@@ -131,6 +278,7 @@ class GoldProvider with ChangeNotifier {
           ? latest.lastUpdate
           : latest.lastUpdate.toUtc();
 
+      _usdToSelectedRate = usdToSelected;
       _currentGoldPrice = GoldPrice(
         ouncePrice: ouncePriceSelected,
         gramPrice: gramPriceSelected,
@@ -141,49 +289,172 @@ class GoldProvider with ChangeNotifier {
         changePercent: latest.changePercent,
       );
 
+      try {
+        final pivotUsd = await _api.getPivotPoints(
+          symbol: _silverSymbol,
+          period: '1D',
+        );
+        _pivotPoints = pivotUsd.scaled(_usdToSelectedRate);
+        _pivotPointsError = null;
+      } catch (e) {
+        _pivotPoints = null;
+        _pivotPointsError = e.toString();
+      }
+
       // 3) بناء عيارات وسبائك بناءً على سعر جرام 999 (الفضة النقية)
       _buildCalibers(gramPriceSelected);
       _buildBullions(gramPriceSelected);
 
-      // 4) ✅ تحميل بيانات آخر 10 أيام (للشارت + الجدول)
-      await _loadWeeklyHistory(
-        usdToSelectedRate: usdToSelected,
-        days: 10,
+      // 4) تحميل بيانات أسبوع للواجهة العامة ثم الفترة المختارة للتحليل
+      _historyByRange.clear();
+      _loadingChartRanges.clear();
+      _analysisPreloadTask = null;
+      _weeklyOuncePrices = [];
+
+      await _loadHistoryForRange(
+        range: ChartRange.week,
+        usdToSelectedRate: _usdToSelectedRate,
+        requestId: requestId,
+        notify: false,
       );
+      if (_selectedChartRange != ChartRange.week) {
+        await _loadHistoryForRange(
+          range: _selectedChartRange,
+          usdToSelectedRate: _usdToSelectedRate,
+          requestId: requestId,
+          notify: false,
+        );
+      }
     } catch (e) {
       _errorMessage = e.toString();
       _currentGoldPrice = null;
+      _pivotPoints = null;
+      _pivotPointsError = null;
       _weeklyOuncePrices = [];
+      _historyByRange.clear();
+      _loadingChartRanges.clear();
+      _analysisPreloadTask = null;
       _calibers = [];
       _bullions = [];
     } finally {
       _isLoading = false;
+      _isPivotPointsLoading = false;
       notifyListeners();
     }
   }
 
-  /// تحميل بيانات تاريخية من history واستخدامها في الشارت
-  Future<void> _loadWeeklyHistory({
-    required double usdToSelectedRate,
-    int days = 10,
-  }) async {
-    try {
-      final List<double> usdCloses =
-          await _api.getHistoryCloses(symbol: _silverSymbol, days: days);
+  Future<void> _ensureHistoryForRange(ChartRange range) async {
+    if (_currentGoldPrice == null) return;
+    if (_historyByRange[range]?.isNotEmpty ?? false) return;
+    await _loadHistoryForRange(
+      range: range,
+      usdToSelectedRate: _usdToSelectedRate,
+      requestId: _historyRequestId,
+      notify: true,
+    );
+  }
 
-      if (usdCloses.isEmpty) {
-        _weeklyOuncePrices = [];
+  Future<void> _loadHistoryForRange({
+    required ChartRange range,
+    required double usdToSelectedRate,
+    required int requestId,
+    bool notify = true,
+  }) async {
+    if (_loadingChartRanges.contains(range)) return;
+
+    _loadingChartRanges.add(range);
+    if (notify) {
+      notifyListeners();
+    }
+
+    try {
+      final List<double> usdCloses = await _api.getHistoryCloses(
+        symbol: _silverSymbol,
+        days: range.days,
+      );
+
+      if (requestId != _historyRequestId) {
         return;
       }
 
-      _weeklyOuncePrices = usdCloses
+      if (usdCloses.isEmpty) {
+        _historyByRange[range] = <double>[];
+        if (range == ChartRange.week) {
+          _weeklyOuncePrices = <double>[];
+        }
+        return;
+      }
+
+      final converted = usdCloses
           .map((p) => double.parse(
                 (p * usdToSelectedRate).toStringAsFixed(2),
               ))
           .toList();
+
+      _historyByRange[range] = converted;
+      if (range == ChartRange.week) {
+        _weeklyOuncePrices = converted;
+      }
     } catch (_) {
-      _weeklyOuncePrices = [];
+      if (requestId != _historyRequestId) {
+        return;
+      }
+      _historyByRange[range] = <double>[];
+      if (range == ChartRange.week) {
+        _weeklyOuncePrices = <double>[];
+      }
+    } finally {
+      _loadingChartRanges.remove(range);
+      if (notify) {
+        notifyListeners();
+      }
     }
+  }
+
+  Future<void> _preloadAllChartRangesFromYearHistory({
+    required int requestId,
+    required double usdToSelectedRate,
+  }) async {
+    final ranges = ChartRange.values.toSet();
+    _loadingChartRanges.addAll(ranges);
+    notifyListeners();
+
+    try {
+      final List<double> usdCloses = await _api.getHistoryCloses(
+        symbol: _silverSymbol,
+        days: ChartRange.year.days,
+      );
+
+      if (requestId != _historyRequestId) {
+        return;
+      }
+
+      final List<double> converted = usdCloses
+          .map((p) => double.parse((p * usdToSelectedRate).toStringAsFixed(2)))
+          .toList();
+
+      for (final range in ChartRange.values) {
+        _historyByRange[range] = _tail(converted, range.days);
+      }
+      _weeklyOuncePrices = _historyByRange[ChartRange.week] ?? <double>[];
+    } catch (_) {
+      if (requestId != _historyRequestId) {
+        return;
+      }
+      for (final range in ChartRange.values) {
+        _historyByRange[range] = <double>[];
+      }
+      _weeklyOuncePrices = <double>[];
+    } finally {
+      _loadingChartRanges.removeAll(ranges);
+      notifyListeners();
+    }
+  }
+
+  List<double> _tail(List<double> source, int count) {
+    if (source.isEmpty) return <double>[];
+    if (source.length <= count) return List<double>.from(source);
+    return source.sublist(source.length - count);
   }
 
   // ======= بناء عيارات الفضة والسبائك =======

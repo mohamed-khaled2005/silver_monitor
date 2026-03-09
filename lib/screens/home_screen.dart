@@ -23,6 +23,7 @@ import 'account_screen.dart';
 import 'educational_content_screen.dart';
 import 'profit_loss_screen.dart';
 import 'analysis_performance_screen.dart';
+import 'support_resistance_screen.dart';
 import '../providers/app_manager_provider.dart';
 import '../widgets/manual_ad_banner.dart';
 
@@ -43,11 +44,13 @@ class _SideNavItem {
   final int index;
   final String title;
   final IconData icon;
+  final String section;
 
   const _SideNavItem({
     required this.index,
     required this.title,
     required this.icon,
+    required this.section,
   });
 }
 
@@ -72,6 +75,7 @@ class HomeScreenState extends State<HomeScreen>
   static const int _contactTabIndex = 9;
   static const int _accountTabIndex = 10;
   static const int _analysisTabIndex = 11;
+  static const int _supportResistanceTabIndex = 12;
   static const double _desktopNavBreakpoint = 980;
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -228,7 +232,13 @@ class HomeScreenState extends State<HomeScreen>
               const AboutScreen(),
               const ContactScreen(),
               const AccountScreen(),
-              AnalysisPerformanceScreen(chartRefreshTick: _chartRefreshTick),
+              AnalysisPerformanceScreen(
+                chartRefreshTick: _chartRefreshTick,
+                isActive: _currentIndex == _analysisTabIndex,
+              ),
+              SupportResistanceScreen(
+                isActive: _currentIndex == _supportResistanceTabIndex,
+              ),
             ],
           );
 
@@ -597,10 +607,83 @@ class HomeScreenState extends State<HomeScreen>
               isPositive: price.isPositive,
               currency: provider.selectedCurrency,
             ),
+            const SizedBox(height: 10),
+            _buildMarketStatusCard(),
             const SizedBox(height: 14),
             _buildLast10DaysTable(
               provider: provider,
               lastUpdated: price.lastUpdated,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  bool _isSilverMarketOpenNow() {
+    final now = DateTime.now();
+    return now.weekday != DateTime.saturday && now.weekday != DateTime.sunday;
+  }
+
+  Widget _buildMarketStatusCard() {
+    final isOpen = _isSilverMarketOpenNow();
+    final statusColor = isOpen ? AppColors.success : AppColors.error;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isOpen
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.pause_circle_outline_rounded,
+                size: 18,
+                color: statusColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'حالة السوق',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+                ),
+                child: Text(
+                  isOpen ? 'مفتوح' : 'مغلق',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: statusColor,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (!isOpen) ...[
+            const SizedBox(height: 8),
+            Text(
+              'سوق التداول وأسعار الفضة تتوقف يومي السبت والأحد.',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+                height: 1.35,
+              ),
             ),
           ],
         ],
@@ -777,25 +860,22 @@ class HomeScreenState extends State<HomeScreen>
     }
 
     Widget rowItem({
-      required Widget leftPrice, // âœ… ط£ظ‚طµظ‰ ط§ظ„ط´ظ…ط§ظ„
-      required Widget rightDate, // âœ… ط£ظ‚طµظ‰ ط§ظ„ظٹظ…ظٹظ†
+      required Widget leftPrice,
+      required Widget rightDate,
     }) {
       return Padding(
-        // طھظ‚ط¯ط± طھظ‚ظ„ظ„ظ‡ط§ ظ„ظˆ ط¹ط§ظٹط² ط£ظ‚ط±ط¨ ظ„ظ„ط­ط§ظپط©
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: IntrinsicHeight(
           child: Row(
-            // âœ… LTR ط¹ط´ط§ظ† ط£ظˆظ„ ط¹ظ†طµط± ظٹط¨ظ‚ظ‰ ط£ظ‚طµظ‰ ظٹط³ط§ط± ظˆط¢ط®ط± ط¹ظ†طµط± ط£ظ‚طµظ‰ ظٹظ…ظٹظ†
             textDirection: TextDirection.ltr,
             children: [
-              Expanded(flex: 2, child: leftPrice), // âœ… ظٹط³ط§ط±: ط§ظ„ط³ط¹ط±
+              Expanded(flex: 2, child: leftPrice),
               VerticalDivider(
                 width: 22,
                 thickness: 1,
                 color: dividerColor,
               ),
-              Expanded(
-                  flex: 3, child: rightDate), // âœ… ظٹظ…ظٹظ†: ط§ظ„طھط§ط±ظٹط®
+              Expanded(flex: 3, child: rightDate),
             ],
           ),
         ),
@@ -930,7 +1010,6 @@ class HomeScreenState extends State<HomeScreen>
 
   Widget _buildSideNavigationPanel({required bool closeOnSelect}) {
     final items = _navigationItems(hideOurApps: _shouldHideOurAppsScreen());
-
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -949,72 +1028,134 @@ class HomeScreenState extends State<HomeScreen>
         ],
       ),
       child: SafeArea(
-        child: ListView.separated(
+        child: ListView.builder(
           padding: const EdgeInsets.fromLTRB(10, 16, 10, 18),
           itemCount: items.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 6),
           itemBuilder: (context, i) {
             final item = items[i];
+            final previousSection = i == 0 ? null : items[i - 1].section;
+            final bool showSectionLabel = previousSection != item.section;
             final bool isSelected = _currentIndex == item.index;
-
-            return AnimatedContainer(
-              duration: AppAnimations.buttonAnimation,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? _silverAccent.withValues(alpha: 0.16)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isSelected
-                      ? _silverAccent.withValues(alpha: 0.35)
-                      : Colors.white.withValues(alpha: 0.05),
-                ),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _navigateToTab(
-                    item.index,
-                    closeDrawer: closeOnSelect,
-                  ),
-                  child: ListTile(
-                    dense: true,
-                    contentPadding: const EdgeInsetsDirectional.fromSTEB(
-                      12,
-                      6,
-                      10,
-                      6,
-                    ),
-                    leading: Icon(
-                      item.icon,
-                      size: 22,
-                      color:
-                          isSelected ? _silverAccent : AppColors.textSecondary,
-                    ),
-                    title: Text(
-                      item.title,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: isSelected
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
-                        fontWeight:
-                            isSelected ? FontWeight.w800 : FontWeight.w600,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? const Icon(
-                            Icons.check_circle_rounded,
-                            size: 18,
-                            color: _silverAccent,
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (showSectionLabel) ...[
+                  if (i != 0) const SizedBox(height: 12),
+                  _buildSideSectionLabel(item.section),
+                  const SizedBox(height: 6),
+                ],
+                AnimatedContainer(
+                  duration: AppAnimations.buttonAnimation,
+                  decoration: BoxDecoration(
+                    gradient: isSelected
+                        ? const LinearGradient(
+                            colors: [Color(0x2EC0C5D5), Color(0x14474D5C)],
+                            begin: Alignment.centerRight,
+                            end: Alignment.centerLeft,
                           )
                         : null,
+                    color: isSelected ? null : Colors.transparent,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isSelected
+                          ? _silverAccent.withValues(alpha: 0.38)
+                          : Colors.white.withValues(alpha: 0.05),
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => _navigateToTab(
+                        item.index,
+                        closeDrawer: closeOnSelect,
+                      ),
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: const EdgeInsetsDirectional.fromSTEB(
+                          12,
+                          6,
+                          10,
+                          6,
+                        ),
+                        leading: Icon(
+                          item.icon,
+                          size: 22,
+                          color: isSelected
+                              ? _silverAccent
+                              : AppColors.textSecondary,
+                        ),
+                        title: Text(
+                          item.title,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isSelected
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary,
+                            fontWeight:
+                                isSelected ? FontWeight.w800 : FontWeight.w600,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _silverAccent.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color:
+                                        _silverAccent.withValues(alpha: 0.35),
+                                  ),
+                                ),
+                                child: Text(
+                                  'نشط',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: _silverAccent,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              )
+                            : null,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 6),
+              ],
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildSideSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(start: 4, end: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: _silverAccent,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary.withValues(alpha: 0.92),
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1025,57 +1166,74 @@ class HomeScreenState extends State<HomeScreen>
         index: _homeTabIndex,
         title: 'الصفحة الرئيسية',
         icon: Icons.home_outlined,
+        section: 'القائمة الرئيسية',
       ),
       const _SideNavItem(
         index: _analysisTabIndex,
-        title: 'التحليل والأداء',
+        title: 'تحليل وأداء الفضة',
         icon: Icons.analytics_outlined,
+        section: 'الأسعار والتحليل',
       ),
       const _SideNavItem(
-        index: _calculatorTabIndex,
-        title: 'حاسبة سعر الفضة',
-        icon: Icons.calculate_outlined,
-      ),
-      const _SideNavItem(
-        index: _zakatTabIndex,
-        title: 'حاسبة زكاة الفضة',
-        icon: Icons.mosque_outlined,
+        index: _supportResistanceTabIndex,
+        title: 'الدعم والمقاومة',
+        icon: Icons.layers_outlined,
+        section: 'الأسعار والتحليل',
       ),
       const _SideNavItem(
         index: _calibersTabIndex,
         title: 'أسعار العيارات',
         icon: Icons.diamond_outlined,
+        section: 'الأسعار والتحليل',
       ),
       const _SideNavItem(
         index: _bullionsTabIndex,
         title: 'أسعار السبائك',
         icon: Icons.auto_awesome_outlined,
+        section: 'الأسعار والتحليل',
+      ),
+      const _SideNavItem(
+        index: _calculatorTabIndex,
+        title: 'حاسبة سعر الفضة',
+        icon: Icons.calculate_outlined,
+        section: 'الحاسبات',
       ),
       const _SideNavItem(
         index: _profitLossTabIndex,
         title: 'حاسبة الربح والخسارة',
         icon: Icons.trending_up_rounded,
+        section: 'الحاسبات',
+      ),
+      const _SideNavItem(
+        index: _zakatTabIndex,
+        title: 'حاسبة زكاة الفضة',
+        icon: Icons.mosque_outlined,
+        section: 'الحاسبات',
       ),
       const _SideNavItem(
         index: _educationTabIndex,
         title: 'المحتوى التعليمي',
         icon: Icons.menu_book_outlined,
+        section: 'المحتوى والمعلومات',
       ),
       if (!hideOurApps)
         const _SideNavItem(
           index: _ourAppsTabIndex,
           title: 'تطبيقاتنا',
           icon: Icons.apps_outlined,
+          section: 'المحتوى والمعلومات',
         ),
       const _SideNavItem(
         index: _aboutTabIndex,
         title: 'عن التطبيق',
         icon: Icons.info_outline_rounded,
+        section: 'المحتوى والمعلومات',
       ),
       const _SideNavItem(
         index: _contactTabIndex,
-        title: 'اتصل بنا',
+        title: 'الاتصال بنا',
         icon: Icons.contact_page_outlined,
+        section: 'المحتوى والمعلومات',
       ),
     ];
   }
@@ -1125,6 +1283,8 @@ class HomeScreenState extends State<HomeScreen>
         return 'account';
       case _analysisTabIndex:
         return 'analysis_performance';
+      case _supportResistanceTabIndex:
+        return 'support_resistance';
       default:
         return 'tab_$index';
     }
@@ -1137,6 +1297,7 @@ class HomeScreenState extends State<HomeScreen>
   bool _shouldShowMarketToolsForIndex(int index) {
     return index == _homeTabIndex ||
         index == _analysisTabIndex ||
+        index == _supportResistanceTabIndex ||
         index == _calculatorTabIndex ||
         index == _zakatTabIndex ||
         index == _calibersTabIndex ||

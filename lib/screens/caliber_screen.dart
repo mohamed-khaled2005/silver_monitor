@@ -19,14 +19,6 @@ class _CaliberScreenState extends State<CaliberScreen> {
 
   static const Color _silverAccent = Color(0xFFC0C5D5);
   static const Color _silverAccentDark = Color(0xFF9FA6B5);
-  static const LinearGradient _silverGradient = LinearGradient(
-    colors: [
-      Color(0xFFE6E9F0),
-      Color(0xFFCFD4E1),
-    ],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -120,20 +112,16 @@ class _CaliberScreenState extends State<CaliberScreen> {
         final double pricePerUnit =
             _showOunce ? caliber.pricePerGram * 31.1035 : caliber.pricePerGram;
 
-        final bool isMainCard = index == 0;
-
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            gradient: isMainCard
-                ? _silverGradient
-                : const LinearGradient(
-                    colors: [
-                      AppColors.cardDark,
-                      AppColors.cardLight,
-                    ],
-                  ),
+            gradient: const LinearGradient(
+              colors: [
+                AppColors.cardDark,
+                AppColors.cardLight,
+              ],
+            ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -157,17 +145,14 @@ class _CaliberScreenState extends State<CaliberScreen> {
                       style: AppTextStyles.bodyMedium.copyWith(
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
-                        color:
-                            isMainCard ? Colors.black : AppColors.textPrimary,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'نقاء ${caliber.purity}',
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: isMainCard
-                            ? Colors.black54
-                            : AppColors.textSecondary,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -178,10 +163,10 @@ class _CaliberScreenState extends State<CaliberScreen> {
                 children: [
                   Text(
                     pricePerUnit.toStringAsFixed(2),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
-                      color: isMainCard ? Colors.black : _silverAccent,
+                      color: _silverAccent,
                       fontFamily: 'Tajawal',
                     ),
                   ),
@@ -190,8 +175,7 @@ class _CaliberScreenState extends State<CaliberScreen> {
                         ? '${provider.selectedCurrency} / أونصة'
                         : '${provider.selectedCurrency} / جرام',
                     style: AppTextStyles.bodySmall.copyWith(
-                      color:
-                          isMainCard ? Colors.black54 : AppColors.textSecondary,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -215,16 +199,15 @@ class _CaliberScreenState extends State<CaliberScreen> {
     ];
 
     final iconData = icons[index % icons.length];
-    final bool isMain = index == 0;
 
     return Container(
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: isMain ? Colors.white : _silverAccent.withValues(alpha: 0.12),
+        color: _silverAccent.withValues(alpha: 0.12),
         shape: BoxShape.circle,
         border: Border.all(
-          color: isMain ? Colors.transparent : _silverAccentDark,
+          color: _silverAccentDark,
           width: 1.5,
         ),
       ),

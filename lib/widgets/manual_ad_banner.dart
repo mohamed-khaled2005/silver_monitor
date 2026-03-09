@@ -22,14 +22,10 @@ class ManualAdBanner extends StatelessWidget {
     }
 
     final screenHeight = MediaQuery.sizeOf(context).height;
+    final safeBottomInset = MediaQuery.paddingOf(context).bottom;
     final stickyImageHeight = (screenHeight * 0.15).clamp(54.0, 84.0);
     const regularImageHeight = 108.0;
-    final BorderRadius bannerRadius = stickyBottom
-        ? const BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-          )
-        : const BorderRadius.all(Radius.circular(16));
+    const BorderRadius bannerRadius = BorderRadius.all(Radius.circular(16));
 
     final double imageHeight =
         stickyBottom ? stickyImageHeight : regularImageHeight;
@@ -54,7 +50,7 @@ class ManualAdBanner extends StatelessWidget {
               adData.imageUrl,
               height: imageHeight,
               width: double.infinity,
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
               errorBuilder: (_, __, ___) {
                 return Container(
                   height: imageHeight,
@@ -74,10 +70,18 @@ class ManualAdBanner extends StatelessWidget {
     );
 
     if (stickyBottom) {
-      return SizedBox(
-        width: double.infinity,
-        height: imageHeight,
-        child: banner,
+      return Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          safeBottomInset > 0 ? safeBottomInset : 8,
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          height: imageHeight,
+          child: banner,
+        ),
       );
     }
 

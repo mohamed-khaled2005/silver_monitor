@@ -103,6 +103,190 @@ class LatestPrice {
   }
 }
 
+class PivotSignal {
+  const PivotSignal({
+    required this.summary,
+    required this.score,
+    required this.confidence,
+    required this.trend,
+    required this.volatility,
+  });
+
+  final String summary;
+  final double score;
+  final String confidence;
+  final String trend;
+  final String volatility;
+
+  factory PivotSignal.fromJson(Map<String, dynamic> json) {
+    final scoreRaw = json['score'];
+    final score = scoreRaw == null
+        ? 0.0
+        : double.tryParse(scoreRaw.toString().trim()) ?? 0.0;
+
+    return PivotSignal(
+      summary: json['summary']?.toString().trim().isNotEmpty == true
+          ? json['summary'].toString().trim()
+          : 'Neutral',
+      score: score,
+      confidence: json['confidence']?.toString().trim() ?? '',
+      trend: json['trend']?.toString().trim() ?? '',
+      volatility: json['volatility']?.toString().trim() ?? '',
+    );
+  }
+}
+
+class PivotPointsData {
+  PivotPointsData({
+    required this.ticker,
+    required this.signal,
+    required this.models,
+  });
+
+  final String ticker;
+  final PivotSignal signal;
+  final Map<String, Map<String, double>> models;
+
+  static const List<String> _modelOrder = <String>[
+    'fibonacci',
+    'classic',
+    'camarilla',
+    'woodie',
+    'demark',
+  ];
+
+  static const List<String> _levelOrder = <String>[
+    'R5',
+    'R4',
+    'R3',
+    'R2',
+    'R1',
+    'P',
+    'S1',
+    'S2',
+    'S3',
+    'S4',
+    'S5',
+  ];
+
+  factory PivotPointsData.fromJson(Map<String, dynamic> json) {
+    final signalRaw = json['signal'];
+    final pivotsRaw = json['pivots'];
+
+    final signal = signalRaw is Map
+        ? PivotSignal.fromJson(signalRaw.cast<String, dynamic>())
+        : const PivotSignal(
+            summary: 'Neutral',
+            score: 0,
+            confidence: '',
+            trend: '',
+            volatility: '',
+          );
+
+    final models = pivotsRaw is Map
+        ? _parseModels(pivotsRaw.cast<String, dynamic>())
+        : <String, Map<String, double>>{};
+
+    if (models.isEmpty) {
+      throw Exception('Pivot points response is empty');
+    }
+
+    return PivotPointsData(
+      ticker: json['ticker']?.toString() ?? '',
+      signal: signal,
+      models: models,
+    );
+  }
+
+  PivotPointsData scaled(double factor) {
+    if (factor == 1.0) {
+      return this;
+    }
+
+    final scaledModels = <String, Map<String, double>>{};
+    for (final entry in models.entries) {
+      scaledModels[entry.key] = entry.value.map(
+        (level, value) => MapEntry(
+          level,
+          double.parse((value * factor).toStringAsFixed(4)),
+        ),
+      );
+    }
+
+    return PivotPointsData(
+      ticker: ticker,
+      signal: signal,
+      models: scaledModels,
+    );
+  }
+
+  static Map<String, Map<String, double>> _parseModels(
+    Map<String, dynamic> raw,
+  ) {
+    final entries = <MapEntry<String, Map<String, double>>>[];
+    for (final entry in raw.entries) {
+      final key = entry.key.toString().trim().toLowerCase();
+      if (key.isEmpty || entry.value is! Map) {
+        continue;
+      }
+
+      final levels = _parseLevels((entry.value as Map).cast<String, dynamic>());
+      if (levels.isEmpty) {
+        continue;
+      }
+      entries.add(MapEntry(key, levels));
+    }
+
+    entries.sort((a, b) {
+      final rankA = _modelRank(a.key);
+      final rankB = _modelRank(b.key);
+      if (rankA != rankB) {
+        return rankA.compareTo(rankB);
+      }
+      return a.key.compareTo(b.key);
+    });
+
+    return Map<String, Map<String, double>>.fromEntries(entries);
+  }
+
+  static Map<String, double> _parseLevels(Map<String, dynamic> raw) {
+    final levels = <MapEntry<String, double>>[];
+    for (final entry in raw.entries) {
+      final level = entry.key.toString().trim().toUpperCase();
+      if (level.isEmpty) {
+        continue;
+      }
+
+      final value = double.tryParse(entry.value.toString().trim());
+      if (value == null) {
+        continue;
+      }
+      levels.add(MapEntry(level, value));
+    }
+
+    levels.sort((a, b) {
+      final rankA = _levelRank(a.key);
+      final rankB = _levelRank(b.key);
+      if (rankA != rankB) {
+        return rankA.compareTo(rankB);
+      }
+      return a.key.compareTo(b.key);
+    });
+
+    return Map<String, double>.fromEntries(levels);
+  }
+
+  static int _modelRank(String model) {
+    final index = _modelOrder.indexOf(model);
+    return index >= 0 ? index : _modelOrder.length + 1;
+  }
+
+  static int _levelRank(String level) {
+    final index = _levelOrder.indexOf(level);
+    return index >= 0 ? index : _levelOrder.length + 1;
+  }
+}
+
 class ForexApiService {
   ForexApiService({http.Client? client}) : _client = client ?? http.Client();
 
@@ -254,6 +438,33 @@ class ForexApiService {
 
     throw Exception(
         'ظ„ط§ ظٹظ…ظƒظ† ط§ظ„ط­طµظˆظ„ ط¹ظ„ظ‰ ط³ط¹ط± طھط­ظˆظٹظ„ $from â†’ $to.');
+  }
+
+  Future<PivotPointsData> getPivotPoints({
+    required String symbol,
+    String period = '1D',
+  }) async {
+    final normalized = _normalizeSymbol(symbol);
+
+    final data = await _getNew(
+      endpoint: 'pivot_points',
+      query: {
+        'symbol': normalized,
+        'period': period.toUpperCase(),
+      },
+    );
+
+    final resp = data['response'];
+    if (resp is! List || resp.isEmpty) {
+      throw Exception('No pivot points returned for $normalized');
+    }
+
+    final item = _pickBestItem(resp);
+    if (item.isEmpty) {
+      throw Exception('Unable to parse pivot points for $normalized');
+    }
+
+    return PivotPointsData.fromJson(item);
   }
 
   Future<double?> _getRatePairNewOrNull(String newSymbolNoSlash) async {
