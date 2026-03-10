@@ -344,10 +344,10 @@ class HomeScreenState extends State<HomeScreen>
                       _currentIndex == _accountTabIndex
                           ? (isAuthenticated
                               ? Icons.person
-                              : Icons.login_rounded)
+                              : Icons.account_circle_rounded)
                           : (isAuthenticated
                               ? Icons.person_outline_rounded
-                              : Icons.login_rounded),
+                              : Icons.account_circle_outlined),
                       color: _silverAccent,
                     ),
                   ),
@@ -751,9 +751,13 @@ class HomeScreenState extends State<HomeScreen>
     required DateTime lastUpdated,
   }) {
     final currency = provider.selectedCurrency;
-    final history = provider.weeklyOuncePrices;
-    final trimmedHistory =
-        history.length <= 10 ? history : history.sublist(history.length - 10);
+    final monthlyHistory = provider.chartPricesFor(ChartRange.month);
+    final rawHistory = monthlyHistory.length >= 10
+        ? monthlyHistory
+        : provider.weeklyOuncePrices;
+    final trimmedHistory = rawHistory.length <= 10
+        ? rawHistory
+        : rawHistory.sublist(rawHistory.length - 10);
     final orderedHistory = _ensureHistoryOldestToNewest(
       prices: trimmedHistory,
       latestPrice: provider.currentGoldPrice?.ouncePrice,
@@ -790,7 +794,7 @@ class HomeScreenState extends State<HomeScreen>
             ],
           ),
           const SizedBox(height: 12),
-          if (history.isEmpty)
+          if (trimmedHistory.isEmpty)
             Text(
               'لا توجد بيانات تاريخية الآن.\nاضغط تحديث أو جرّب بعد دقيقة.',
               style: AppTextStyles.bodySmall.copyWith(
@@ -1033,17 +1037,10 @@ class HomeScreenState extends State<HomeScreen>
           itemCount: items.length,
           itemBuilder: (context, i) {
             final item = items[i];
-            final previousSection = i == 0 ? null : items[i - 1].section;
-            final bool showSectionLabel = previousSection != item.section;
             final bool isSelected = _currentIndex == item.index;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (showSectionLabel) ...[
-                  if (i != 0) const SizedBox(height: 12),
-                  _buildSideSectionLabel(item.section),
-                  const SizedBox(height: 6),
-                ],
                 AnimatedContainer(
                   duration: AppAnimations.buttonAnimation,
                   decoration: BoxDecoration(
@@ -1095,30 +1092,6 @@ class HomeScreenState extends State<HomeScreen>
                                 isSelected ? FontWeight.w800 : FontWeight.w600,
                           ),
                         ),
-                        trailing: isSelected
-                            ? Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _silverAccent.withValues(alpha: 0.14),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color:
-                                        _silverAccent.withValues(alpha: 0.35),
-                                  ),
-                                ),
-                                child: Text(
-                                  'نشط',
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: _silverAccent,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              )
-                            : null,
                       ),
                     ),
                   ),
@@ -1128,34 +1101,6 @@ class HomeScreenState extends State<HomeScreen>
             );
           },
         ),
-      ),
-    );
-  }
-
-  Widget _buildSideSectionLabel(String text) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(start: 4, end: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              color: _silverAccent,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary.withValues(alpha: 0.92),
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ],
       ),
     );
   }

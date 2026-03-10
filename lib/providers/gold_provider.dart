@@ -305,7 +305,7 @@ class GoldProvider with ChangeNotifier {
       _buildCalibers(gramPriceSelected);
       _buildBullions(gramPriceSelected);
 
-      // 4) تحميل بيانات أسبوع للواجهة العامة ثم الفترة المختارة للتحليل
+      // 4) تحميل بيانات أسبوع + شهر (لتغذية جدول آخر 10 أيام) ثم الفترة المختارة للتحليل
       _historyByRange.clear();
       _loadingChartRanges.clear();
       _analysisPreloadTask = null;
@@ -317,7 +317,14 @@ class GoldProvider with ChangeNotifier {
         requestId: requestId,
         notify: false,
       );
-      if (_selectedChartRange != ChartRange.week) {
+      await _loadHistoryForRange(
+        range: ChartRange.month,
+        usdToSelectedRate: _usdToSelectedRate,
+        requestId: requestId,
+        notify: false,
+      );
+      if (_selectedChartRange != ChartRange.week &&
+          _selectedChartRange != ChartRange.month) {
         await _loadHistoryForRange(
           range: _selectedChartRange,
           usdToSelectedRate: _usdToSelectedRate,

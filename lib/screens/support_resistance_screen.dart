@@ -152,11 +152,6 @@ class _SupportResistanceScreenState extends State<SupportResistanceScreen> {
               child: const LinearProgressIndicator(minHeight: 3),
             ),
           ],
-          const SizedBox(height: 12),
-          _highlightsRow(
-            levels: selectedLevels,
-            currency: provider.selectedCurrency,
-          ),
           const SizedBox(height: 10),
           _levelsTable(
             modelName: _modelName(selectedKey),
@@ -402,138 +397,6 @@ class _SupportResistanceScreenState extends State<SupportResistanceScreen> {
     );
   }
 
-  Widget _highlightsRow({
-    required Map<String, double> levels,
-    required String currency,
-  }) {
-    final r = _findFirst(levels, const ['R1', 'R2', 'R3', 'R4', 'R5']);
-    final p = levels['P'];
-    final s = _findFirst(levels, const ['S1', 'S2', 'S3', 'S4', 'S5']);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 580;
-        if (compact) {
-          return Column(
-            children: [
-              _summaryCard(
-                title: r?.key ?? 'R',
-                value: r?.value,
-                currency: currency,
-                color: AppColors.error,
-                icon: Icons.north_east_rounded,
-              ),
-              const SizedBox(height: 8),
-              _summaryCard(
-                title: 'P',
-                value: p,
-                currency: currency,
-                color: _silverAccent,
-                icon: Icons.horizontal_rule_rounded,
-              ),
-              const SizedBox(height: 8),
-              _summaryCard(
-                title: s?.key ?? 'S',
-                value: s?.value,
-                currency: currency,
-                color: AppColors.success,
-                icon: Icons.south_east_rounded,
-              ),
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            Expanded(
-              child: _summaryCard(
-                title: r?.key ?? 'R',
-                value: r?.value,
-                currency: currency,
-                color: AppColors.error,
-                icon: Icons.north_east_rounded,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _summaryCard(
-                title: 'P',
-                value: p,
-                currency: currency,
-                color: _silverAccent,
-                icon: Icons.horizontal_rule_rounded,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _summaryCard(
-                title: s?.key ?? 'S',
-                value: s?.value,
-                currency: currency,
-                color: AppColors.success,
-                icon: Icons.south_east_rounded,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _summaryCard({
-    required String title,
-    required double? value,
-    required String currency,
-    required Color color,
-    required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.32)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(icon, color: color, size: 16),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value == null ? '-' : '${value.toStringAsFixed(2)} $currency',
-                  textDirection: TextDirection.ltr,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _levelsTable({
     required String modelName,
     required Map<String, double> levels,
@@ -622,19 +485,6 @@ class _SupportResistanceScreenState extends State<SupportResistanceScreen> {
         ],
       ),
     );
-  }
-
-  MapEntry<String, double>? _findFirst(
-    Map<String, double> levels,
-    List<String> keys,
-  ) {
-    for (final key in keys) {
-      final value = levels[key];
-      if (value != null) {
-        return MapEntry(key, value);
-      }
-    }
-    return null;
   }
 
   List<MapEntry<String, double>> _orderedLevels(Map<String, double> levels) {
